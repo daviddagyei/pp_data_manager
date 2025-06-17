@@ -97,7 +97,9 @@ const StudentTable: React.FC = () => {
       field: 'graduationYear',
       headerName: 'Grad Year',
       width: 100,
-      type: 'number',
+      renderCell: (params) => (
+        <span>{params.value}</span>
+      ),
     },
     {
       field: 'parentForm',

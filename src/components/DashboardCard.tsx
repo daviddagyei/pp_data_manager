@@ -180,7 +180,7 @@ interface StatCardProps {
   loading?: boolean;
 }
 
-export function StatCard({ title, value, subtitle, icon, trend, loading }: StatCardProps) {
+export function StatCard({ title, value, subtitle, icon, loading }: StatCardProps) {
   return (
     <DashboardCard
       title={title}
