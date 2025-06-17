@@ -145,15 +145,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     dispatch({ type: 'FETCH_START' });
     
     try {
-      // First test basic API access
-      console.log('🚀 Starting authentication test...');
-      const canAccess = await googleSheetsService.testAPIAccess(accessToken);
-      
-      if (!canAccess) {
-        throw new Error('Unable to access Google Sheets API. Please check your permissions.');
-      }
-      
-      console.log('🎯 Proceeding to fetch student data...');
       const students = await googleSheetsService.fetchStudents(accessToken);
       dispatch({ type: 'FETCH_SUCCESS', payload: students });
     } catch (error) {

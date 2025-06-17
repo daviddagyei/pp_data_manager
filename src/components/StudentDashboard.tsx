@@ -38,40 +38,42 @@ const StudentDashboard: React.FC = () => {
 
   // Load data when user is authenticated
   useEffect(() => {
-    console.log('🔍 useEffect triggered with auth state:');
-    console.log('- isAuthenticated:', authState.isAuthenticated);
-    console.log('- user exists:', !!authState.user);
-    console.log('- access token exists:', !!authState.user?.accessToken);
-    console.log('- initial load complete:', initialLoadComplete);
+    // console.log('🔍 useEffect triggered with auth state:');
+    // console.log('- isAuthenticated:', authState.isAuthenticated);
+    // console.log('- user exists:', !!authState.user);
+    // console.log('- access token exists:', !!authState.user?.accessToken);
+    // console.log('- initial load complete:', initialLoadComplete);
     
     if (authState.isAuthenticated && authState.user?.accessToken && !initialLoadComplete) {
-      console.log('✅ All conditions met, fetching students...');
+      // console.log('✅ All conditions met, fetching students...');
       fetchStudents(authState.user.accessToken)
         .then(() => {
-          console.log('📊 Student data fetch completed');
+          // console.log('📊 Student data fetch completed');
           setInitialLoadComplete(true);
         })
         .catch((error) => {
-          console.error('❌ Student data fetch failed:', error);
+          console.error('❌ Student data fetch failed during initial load:', error);
         });
     } else {
-      console.log('⏳ Not ready to fetch data yet');
+      // console.log('⏳ Not ready to fetch data yet');
     }
   }, [authState.isAuthenticated, authState.user?.accessToken, fetchStudents, initialLoadComplete]);
 
-  // Set up polling for real-time updates
+  // Set up polling for real-time updates - Polling logic removed
+  /*
   useEffect(() => {
     if (authState.isAuthenticated && authState.user?.accessToken && initialLoadComplete) {
       const interval = setInterval(() => {
         if (authState.user?.accessToken) {
           fetchStudents(authState.user.accessToken)
-            .catch(console.error);
+            .catch(error => console.error('❌ Student data fetch failed during poll:', error));
         }
-      }, 30000); // Poll every 30 seconds
+      }, 300000); // Poll every 5 minutes (example)
 
       return () => clearInterval(interval);
     }
   }, [authState.isAuthenticated, authState.user?.accessToken, initialLoadComplete, fetchStudents]);
+  */
 
   const handleLogout = () => {
     logout();
