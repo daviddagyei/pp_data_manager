@@ -11,9 +11,7 @@ import {
   useTheme,
 } from '@mui/material';
 import {
-  People,
   PersonAdd,
-  TrendingUp,
   School,
   Logout,
 } from '@mui/icons-material';
@@ -21,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import Navigation from './Navigation';
-import DashboardCard, { StatCard } from './DashboardCard';
+import DashboardCard from './DashboardCard';
 import DashboardLayout, { DashboardGridItem } from './DashboardLayout';
 import Footer from './Footer';
 import StudentTable from './StudentTable';
@@ -185,12 +183,6 @@ const ModernStudentDashboard: React.FC = () => {
 
   // Calculate statistics
   const totalStudents = dataState.filteredStudents.length;
-  const currentYear = new Date().getFullYear();
-  const recentGraduates = dataState.filteredStudents.filter(s => s.graduationYear >= currentYear - 1).length;
-  const participatingStudents = dataState.filteredStudents.filter(s => (s.participationPoints || 0) > 0).length;
-  const averageParticipation = dataState.filteredStudents.length > 0 
-    ? (dataState.filteredStudents.reduce((sum, student) => sum + (student.participationPoints || 0), 0) / dataState.filteredStudents.length).toFixed(1)
-    : '0';
 
   // Main Dashboard Content
   const DashboardContent = () => (
@@ -253,59 +245,6 @@ const ModernStudentDashboard: React.FC = () => {
             </Box>
           </Box>
         </motion.div>
-      </DashboardGridItem>
-
-      {/* Statistics Cards */}
-      <DashboardGridItem xs={12} sm={6} md={3}>
-        <StatCard
-          title="Total Students"
-          value={totalStudents}
-          subtitle="All registered students"
-          icon={<People sx={{ color: 'primary.main' }} />}
-          trend={{
-            value: 12,
-            isPositive: true,
-          }}
-        />
-      </DashboardGridItem>
-
-      <DashboardGridItem xs={12} sm={6} md={3}>
-        <StatCard
-          title="Active Students"
-          value={participatingStudents}
-          subtitle="With participation points"
-          icon={<School sx={{ color: 'success.main' }} />}
-          trend={{
-            value: 8,
-            isPositive: true,
-          }}
-        />
-      </DashboardGridItem>
-
-      <DashboardGridItem xs={12} sm={6} md={3}>
-        <StatCard
-          title="Recent Graduates"
-          value={recentGraduates}
-          subtitle="Last 2 years"
-          icon={<TrendingUp sx={{ color: 'warning.main' }} />}
-          trend={{
-            value: 5,
-            isPositive: true,
-          }}
-        />
-      </DashboardGridItem>
-
-      <DashboardGridItem xs={12} sm={6} md={3}>
-        <StatCard
-          title="Avg Participation"
-          value={`${averageParticipation} pts`}
-          subtitle="Points per student"
-          icon={<TrendingUp sx={{ color: 'info.main' }} />}
-          trend={{
-            value: 3,
-            isPositive: true,
-          }}
-        />
       </DashboardGridItem>
 
       {/* Search and Filters */}

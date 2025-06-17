@@ -188,8 +188,16 @@ export function StatCard({ title, value, subtitle, icon, trend, loading }: StatC
       icon={icon}
       loading={loading}
       hoverable={true}
+      height="200px"
     >
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 1 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        textAlign: 'center'
+      }}>
         <Typography
           variant="h3"
           component="div"
@@ -198,30 +206,17 @@ export function StatCard({ title, value, subtitle, icon, trend, loading }: StatC
             fontSize: '2.25rem',
             color: 'text.primary',
             lineHeight: 1,
+            mb: 1,
           }}
         >
           {value}
         </Typography>
-        {trend && (
-          <Typography
-            variant="body2"
-            sx={{
-              color: trend.isPositive ? 'success.main' : 'error.main',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.5,
-            }}
-          >
-            {trend.isPositive ? '↗' : '↘'} {Math.abs(trend.value)}%
+        {subtitle && (
+          <Typography variant="body2" color="text.secondary">
+            {subtitle}
           </Typography>
         )}
       </Box>
-      {subtitle && (
-        <Typography variant="body2" color="text.secondary">
-          {subtitle}
-        </Typography>
-      )}
     </DashboardCard>
   );
 }
