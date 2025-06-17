@@ -1,0 +1,375 @@
+import React, { useEffect, useState } from 'react';
+import {
+  Box,
+  Container,
+  Typography,
+  Button,
+  Alert,
+  Chip,
+  Card,
+  CardContent,
+  useTheme,
+} from '@mui/material';
+import {
+  People,
+  PersonAdd,
+  TrendingUp,
+  School,
+  Logout,
+} from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
+import Navigation from './Navigation';
+import DashboardCard, { StatCard } from './DashboardCard';
+import DashboardLayout, { DashboardGridItem } from './DashboardLayout';
+import Footer from './Footer';
+import StudentTable from './StudentTable';
+import SearchAndFilter from './SearchAndFilter';
+import LoadingSpinner from './LoadingSpinner';
+import GoogleOAuthButton from './GoogleOAuthButton';
+import { colorTokens } from '../theme';
+
+const ModernStudentDashboard: React.FC = () => {
+  const theme = useTheme();
+  const { state: authState, logout } = useAuth();
+  const { state: dataState, fetchStudents } = useData();
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Handle login callbacks
+  const handleLoginSuccess = (_accessToken: string) => {
+    setLoginError(null);
+    console.log('✅ Login successful, will fetch data automatically');
+  };
+
+  const handleLoginError = (error: string) => {
+    setLoginError(error);
+    console.error('❌ Login failed:', error);
+  };
+
+  // Load data when user is authenticated
+  useEffect(() => {
+    if (authState.isAuthenticated && authState.user?.accessToken && !initialLoadComplete) {
+      fetchStudents(authState.user.accessToken)
+        .then(() => {
+          setInitialLoadComplete(true);
+        })
+        .catch((error: Error) => {
+          console.error('❌ Failed to fetch students:', error);
+          setInitialLoadComplete(true);
+        });
+    }
+  }, [authState.isAuthenticated, authState.user?.accessToken, fetchStudents, initialLoadComplete]);
+
+  // Authentication check
+  if (!authState.isAuthenticated || !authState.user) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: `linear-gradient(135deg, ${colorTokens.primary[50]} 0%, ${colorTokens.secondary[50]} 100%)`,
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Card
+            sx={{
+              maxWidth: 480,
+              mx: 'auto',
+              p: 4,
+              textAlign: 'center',
+              borderRadius: 3,
+              boxShadow: theme.shadows[16],
+            }}
+          >
+            <CardContent>
+              <School
+                sx={{
+                  fontSize: 64,
+                  color: 'primary.main',
+                  mb: 2,
+                }}
+              />
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{
+                  fontWeight: 700,
+                  mb: 2,
+                  background: `linear-gradient(135deg, ${colorTokens.primary[600]}, ${colorTokens.secondary[600]})`,
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                Student Manager
+              </Typography>
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{ mb: 4, lineHeight: 1.6 }}
+              >
+                Welcome to your modern student management dashboard. 
+                Sign in with Google to get started.
+              </Typography>
+              
+              {loginError && (
+                <Alert 
+                  severity="error" 
+                  sx={{ 
+                    mb: 3,
+                    borderRadius: 2,
+                    '& .MuiAlert-message': {
+                      width: '100%',
+                    }
+                  }}
+                >
+                  {loginError}
+                </Alert>
+              )}
+              
+              <GoogleOAuthButton
+                onLoginSuccess={handleLoginSuccess}
+                onLoginError={handleLoginError}
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
+      </Box>
+    );
+  }
+
+  // Loading state
+  if (!initialLoadComplete) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <Navigation
+          currentPage={currentPage}
+          user={{
+            name: authState.user.name || 'User',
+            email: authState.user.email || '',
+            avatar: authState.user.picture,
+          }}
+          onNavigate={setCurrentPage}
+        />
+        <Container 
+          maxWidth="xl" 
+          sx={{ 
+            flex: 1, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            py: 8,
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <LoadingSpinner message="Loading your dashboard..." />
+          </motion.div>
+        </Container>
+        <Footer variant="minimal" />
+      </Box>
+    );
+  }
+
+  // Calculate statistics
+  const totalStudents = dataState.filteredStudents.length;
+  const currentYear = new Date().getFullYear();
+  const recentGraduates = dataState.filteredStudents.filter(s => s.graduationYear >= currentYear - 1).length;
+  const participatingStudents = dataState.filteredStudents.filter(s => (s.participationPoints || 0) > 0).length;
+  const averageParticipation = dataState.filteredStudents.length > 0 
+    ? (dataState.filteredStudents.reduce((sum, student) => sum + (student.participationPoints || 0), 0) / dataState.filteredStudents.length).toFixed(1)
+    : '0';
+
+  // Main Dashboard Content
+  const DashboardContent = () => (
+    <DashboardLayout>
+      {/* Welcome Section */}
+      <DashboardGridItem xs={12}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Box sx={{ mb: 4 }}>
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                fontWeight: 700,
+                mb: 1,
+                background: `linear-gradient(135deg, ${colorTokens.primary[600]}, ${colorTokens.secondary[600]})`,
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Welcome back, {authState.user?.name?.split(' ')[0]}!
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Here's an overview of your student management system.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Button
+                variant="contained"
+                startIcon={<PersonAdd />}
+                sx={{
+                  borderRadius: 2,
+                  px: 3,
+                  py: 1.5,
+                }}
+              >
+                Add Student
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={logout}
+                startIcon={<Logout />}
+                sx={{
+                  borderRadius: 2,
+                  px: 3,
+                  py: 1.5,
+                }}
+              >
+                Sign Out
+              </Button>
+              <Chip
+                label={`${totalStudents} Total Students`}
+                color="primary"
+                variant="outlined"
+                sx={{ borderRadius: 2 }}
+              />
+            </Box>
+          </Box>
+        </motion.div>
+      </DashboardGridItem>
+
+      {/* Statistics Cards */}
+      <DashboardGridItem xs={12} sm={6} md={3}>
+        <StatCard
+          title="Total Students"
+          value={totalStudents}
+          subtitle="All registered students"
+          icon={<People sx={{ color: 'primary.main' }} />}
+          trend={{
+            value: 12,
+            isPositive: true,
+          }}
+        />
+      </DashboardGridItem>
+
+      <DashboardGridItem xs={12} sm={6} md={3}>
+        <StatCard
+          title="Active Students"
+          value={participatingStudents}
+          subtitle="With participation points"
+          icon={<School sx={{ color: 'success.main' }} />}
+          trend={{
+            value: 8,
+            isPositive: true,
+          }}
+        />
+      </DashboardGridItem>
+
+      <DashboardGridItem xs={12} sm={6} md={3}>
+        <StatCard
+          title="Recent Graduates"
+          value={recentGraduates}
+          subtitle="Last 2 years"
+          icon={<TrendingUp sx={{ color: 'warning.main' }} />}
+          trend={{
+            value: 5,
+            isPositive: true,
+          }}
+        />
+      </DashboardGridItem>
+
+      <DashboardGridItem xs={12} sm={6} md={3}>
+        <StatCard
+          title="Avg Participation"
+          value={`${averageParticipation} pts`}
+          subtitle="Points per student"
+          icon={<TrendingUp sx={{ color: 'info.main' }} />}
+          trend={{
+            value: 3,
+            isPositive: true,
+          }}
+        />
+      </DashboardGridItem>
+
+      {/* Search and Filters */}
+      <DashboardGridItem xs={12}>
+        <DashboardCard title="Student Management" subtitle="Search, filter, and manage student records">
+          <SearchAndFilter />
+        </DashboardCard>
+      </DashboardGridItem>
+
+      {/* Student Table */}
+      <DashboardGridItem xs={12}>
+        <DashboardCard 
+          title="Student Records" 
+          subtitle={`${dataState.filteredStudents.length} students found`}
+          hoverable={false}
+        >
+          {dataState.error ? (
+            <Alert 
+              severity="error" 
+              sx={{ 
+                borderRadius: 2,
+                mb: 2,
+              }}
+            >
+              {dataState.error}
+            </Alert>
+          ) : (
+            <StudentTable />
+          )}
+        </DashboardCard>
+      </DashboardGridItem>
+    </DashboardLayout>
+  );
+
+  return (
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Navigation
+        currentPage={currentPage}
+        user={{
+          name: authState.user.name || 'User',
+          email: authState.user.email || '',
+          avatar: authState.user.picture,
+        }}
+        onNavigate={setCurrentPage}
+      />
+
+      <Box component="main" sx={{ flex: 1 }}>
+        <AnimatePresence mode="wait">
+          {currentPage === 'dashboard' && <DashboardContent />}
+          {currentPage === 'students' && <DashboardContent />}
+          {currentPage === 'settings' && (
+            <Container maxWidth="xl" sx={{ py: 4 }}>
+              <Typography variant="h4">Settings</Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+                Configuration options coming soon...
+              </Typography>
+            </Container>
+          )}
+        </AnimatePresence>
+      </Box>
+
+      <Footer variant="minimal" />
+    </Box>
+  );
+};
+
+export default ModernStudentDashboard;
