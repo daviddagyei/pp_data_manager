@@ -24,6 +24,7 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StudentFormDialog } from './StudentFormDialog.tsx';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog.tsx';
+import StudentDetailsDialog from './StudentDetailsDialog';
 import type { Student } from '../types';
 
 const StudentTable: React.FC = () => {
@@ -34,6 +35,7 @@ const StudentTable: React.FC = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   
   // Notification state
@@ -275,6 +277,12 @@ const StudentTable: React.FC = () => {
     setNotification(prev => ({ ...prev, open: false }));
   };
 
+  // Handle row click to show student details
+  const handleRowClick = (params: GridRowParams) => {
+    setSelectedStudent(params.row as Student);
+    setDetailsDialogOpen(true);
+  };
+
   // Transform students data for DataGrid
   const rows = state.filteredStudents.map(student => ({
     ...student,
@@ -306,14 +314,15 @@ const StudentTable: React.FC = () => {
           }}
           pageSizeOptions={[10, 25, 50, 100]}
           checkboxSelection={false}
-          disableRowSelectionOnClick
           loading={state.loading}
+          onRowClick={handleRowClick}
           sx={{
             '& .MuiDataGrid-cell:focus': {
               outline: 'none',
             },
             '& .MuiDataGrid-row:hover': {
               backgroundColor: 'rgba(0, 0, 0, 0.04)',
+              cursor: 'pointer',
             },
           }}
         />
@@ -341,6 +350,13 @@ const StudentTable: React.FC = () => {
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         onConfirm={handleDeleteConfirm}
+        student={selectedStudent}
+      />
+
+      {/* Student Details Dialog */}
+      <StudentDetailsDialog
+        open={detailsDialogOpen}
+        onClose={() => setDetailsDialogOpen(false)}
         student={selectedStudent}
       />
 
