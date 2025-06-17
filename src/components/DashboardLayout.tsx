@@ -1,5 +1,5 @@
 import React from 'react';
-import { Grid, Container } from '@mui/material';
+import { Box, Container } from '@mui/material';
 import { motion } from 'framer-motion';
 
 interface DashboardLayoutProps {
@@ -37,9 +37,20 @@ export default function DashboardLayout({
         initial="hidden"
         animate="visible"
       >
-        <Grid container spacing={spacing}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(auto-fit, minmax(300px, 1fr))',
+              md: 'repeat(auto-fit, minmax(350px, 1fr))',
+            },
+            gap: spacing,
+            width: '100%',
+          }}
+        >
           {children}
-        </Grid>
+        </Box>
       </motion.div>
     </Container>
   );
@@ -77,12 +88,32 @@ export function DashboardGridItem({
     },
   };
 
+  // Calculate grid column span based on breakpoints
+  const getGridColumn = (cols: number) => {
+    if (cols === 12) return '1 / -1'; // Full width
+    if (cols === 6) return 'span 2';  // Half width on large screens
+    if (cols === 4) return 'span 3';  // Third width on large screens
+    if (cols === 3) return 'span 4';  // Quarter width on large screens
+    return 'span 1';
+  };
+
   return (
-    <Grid item xs={xs} sm={sm} md={md} lg={lg} xl={xl} className={className}>
+    <Box
+      className={className}
+      sx={{
+        gridColumn: {
+          xs: getGridColumn(xs),
+          sm: sm ? getGridColumn(sm) : undefined,
+          md: md ? getGridColumn(md) : undefined,
+          lg: lg ? getGridColumn(lg) : undefined,
+          xl: xl ? getGridColumn(xl) : undefined,
+        },
+      }}
+    >
       <motion.div variants={itemVariants}>
         {children}
       </motion.div>
-    </Grid>
+    </Box>
   );
 }
 
