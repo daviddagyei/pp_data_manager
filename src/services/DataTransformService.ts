@@ -39,6 +39,13 @@ export class DataTransformService {
           break;
         case 'cellnumber':
         case 'cellnumberxxxxx':
+        case 'cellnumberxxxxxxxxx':
+        case 'phone':
+        case 'phonenumber':
+        case 'cellphone':
+        case 'cell':
+        case 'mobile':
+        case 'mobilenumber':
           student.cellNumber = this.formatPhoneNumber(value);
           break;
         case 'parentsname':
