@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { DataState, Student, FilterOptions, SortOption } from '../types';
 import { googleSheetsService } from '../services/GoogleSheetsService';
@@ -25,7 +25,9 @@ type DataAction =
   | { type: 'UPDATE_STUDENT'; payload: Student }
   | { type: 'DELETE_STUDENT'; payload: string } // student ID
   | { type: 'SET_SEARCH_QUERY'; payload: string }
-  | { type: 'SET_FILTERED_STUDENTS'; payload: Student[] }
+  | { type: 'SET_FILTERS'; payload: FilterOptions }
+  | { type: 'SET_SORTING'; payload: SortOption }
+  | { type: 'APPLY_FILTERS_AND_SEARCH' }
   | { type: 'CLEAR_ERROR' };
 
 const dataReducer = (state: DataState, action: DataAction): DataState => {
@@ -37,15 +39,17 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
         error: null
       };
     
-    case 'FETCH_SUCCESS':
+    case 'FETCH_SUCCESS': {
+      const filteredAndSorted = applyFiltersAndSearch(action.payload, state.filters, state.searchQuery);
       return {
         ...state,
         students: action.payload,
-        filteredStudents: action.payload,
+        filteredStudents: state.sorting ? applySorting(filteredAndSorted, state.sorting) : filteredAndSorted,
         loading: false,
         error: null,
         lastUpdated: new Date()
       };
+    }
     
     case 'FETCH_ERROR':
       return {
@@ -54,46 +58,72 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
         error: action.payload
       };
     
-    case 'ADD_STUDENT':
+    case 'ADD_STUDENT': {
       const newStudents = [...state.students, action.payload];
+      const newFiltered = applyFiltersAndSearch(newStudents, state.filters, state.searchQuery);
       return {
         ...state,
         students: newStudents,
-        filteredStudents: filterStudents(newStudents, state.searchQuery),
+        filteredStudents: state.sorting ? applySorting(newFiltered, state.sorting) : newFiltered,
         lastUpdated: new Date()
       };
+    }
     
-    case 'UPDATE_STUDENT':
+    case 'UPDATE_STUDENT': {
       const updatedStudents = state.students.map(student => 
         student.id === action.payload.id ? action.payload : student
       );
+      const updatedFiltered = applyFiltersAndSearch(updatedStudents, state.filters, state.searchQuery);
       return {
         ...state,
         students: updatedStudents,
-        filteredStudents: filterStudents(updatedStudents, state.searchQuery),
+        filteredStudents: state.sorting ? applySorting(updatedFiltered, state.sorting) : updatedFiltered,
         lastUpdated: new Date()
       };
+    }
     
-    case 'DELETE_STUDENT':
+    case 'DELETE_STUDENT': {
       const remainingStudents = state.students.filter(student => student.id !== action.payload);
+      const remainingFiltered = applyFiltersAndSearch(remainingStudents, state.filters, state.searchQuery);
       return {
         ...state,
         students: remainingStudents,
-        filteredStudents: filterStudents(remainingStudents, state.searchQuery),
+        filteredStudents: state.sorting ? applySorting(remainingFiltered, state.sorting) : remainingFiltered,
         lastUpdated: new Date()
       };
+    }
     
-    case 'SET_SEARCH_QUERY':
+    case 'SET_SEARCH_QUERY': {
+      const searchFiltered = applyFiltersAndSearch(state.students, state.filters, action.payload);
       return {
         ...state,
         searchQuery: action.payload,
-        filteredStudents: filterStudents(state.students, action.payload)
+        filteredStudents: state.sorting ? applySorting(searchFiltered, state.sorting) : searchFiltered
       };
+    }
     
-    case 'SET_FILTERED_STUDENTS':
+    case 'SET_FILTERS': {
+      const filterFiltered = applyFiltersAndSearch(state.students, action.payload, state.searchQuery);
       return {
         ...state,
-        filteredStudents: action.payload
+        filters: action.payload,
+        filteredStudents: state.sorting ? applySorting(filterFiltered, state.sorting) : filterFiltered
+      };
+    }
+    
+    case 'SET_SORTING': {
+      const sortedStudents = applySorting(state.filteredStudents, action.payload);
+      return {
+        ...state,
+        sorting: action.payload,
+        filteredStudents: sortedStudents
+      };
+    }
+    
+    case 'APPLY_FILTERS_AND_SEARCH':
+      return {
+        ...state,
+        filteredStudents: applyFiltersAndSearch(state.students, state.filters, state.searchQuery)
       };
     
     case 'CLEAR_ERROR':
@@ -108,6 +138,7 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
 };
 
 // Helper function to filter students based on search query
+// Optimized to return early if no query and use efficient string operations
 const filterStudents = (students: Student[], searchQuery: string): Student[] => {
   if (!searchQuery.trim()) {
     return students;
@@ -115,14 +146,90 @@ const filterStudents = (students: Student[], searchQuery: string): Student[] => 
   
   const query = searchQuery.toLowerCase().trim();
   
-  return students.filter(student => 
-    student.firstName.toLowerCase().includes(query) ||
-    student.lastName.toLowerCase().includes(query) ||
-    student.email.toLowerCase().includes(query) ||
-    student.highSchool.toLowerCase().includes(query) ||
-    (student.parentName && student.parentName.toLowerCase().includes(query)) ||
-    (student.parentEmail && student.parentEmail.toLowerCase().includes(query))
-  );
+  return students.filter(student => {
+    // Short-circuit evaluation for performance - check most likely matches first
+    return student.firstName.toLowerCase().includes(query) ||
+           student.lastName.toLowerCase().includes(query) ||
+           student.email.toLowerCase().includes(query) ||
+           student.highSchool.toLowerCase().includes(query) ||
+           (student.parentName?.toLowerCase().includes(query)) ||
+           (student.parentEmail?.toLowerCase().includes(query));
+  });
+};
+
+// Helper function to apply both filters and search
+// Optimized to avoid unnecessary array iterations
+const applyFiltersAndSearch = (students: Student[], filters: FilterOptions, searchQuery: string): Student[] => {
+  let filtered = students;
+  
+  // Apply filters first (typically reduces the dataset more than search)
+  if (filters.graduationYear) {
+    filtered = filtered.filter(student => student.graduationYear === filters.graduationYear);
+  }
+  
+  if (filters.highSchool) {
+    const schoolQuery = filters.highSchool.toLowerCase();
+    filtered = filtered.filter(student => 
+      student.highSchool.toLowerCase().includes(schoolQuery)
+    );
+  }
+  
+  if (filters.parentFormCompleted !== undefined) {
+    filtered = filtered.filter(student => student.parentForm === filters.parentFormCompleted);
+  }
+  
+  if (filters.careerExplorationCompleted !== undefined) {
+    filtered = filtered.filter(student => 
+      filters.careerExplorationCompleted 
+        ? !!student.careerExploration 
+        : !student.careerExploration
+    );
+  }
+  
+  if (filters.collegeExplorationCompleted !== undefined) {
+    filtered = filtered.filter(student => 
+      filters.collegeExplorationCompleted 
+        ? !!student.collegeExploration 
+        : !student.collegeExploration
+    );
+  }
+  
+  // Then apply search query to the already filtered results
+  if (searchQuery.trim()) {
+    filtered = filterStudents(filtered, searchQuery);
+  }
+  
+  return filtered;
+};
+
+// Helper function to apply sorting to students
+const applySorting = (students: Student[], sortOption: SortOption): Student[] => {
+  return [...students].sort((a, b) => {
+    const aValue = a[sortOption.field];
+    const bValue = b[sortOption.field];
+    
+    // Handle different data types
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      const comparison = aValue.localeCompare(bValue);
+      return sortOption.direction === 'asc' ? comparison : -comparison;
+    }
+    
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      const comparison = aValue - bValue;
+      return sortOption.direction === 'asc' ? comparison : -comparison;
+    }
+    
+    if (aValue instanceof Date && bValue instanceof Date) {
+      const comparison = aValue.getTime() - bValue.getTime();
+      return sortOption.direction === 'asc' ? comparison : -comparison;
+    }
+    
+    // Fallback to string comparison
+    const aStr = String(aValue || '');
+    const bStr = String(bValue || '');
+    const comparison = aStr.localeCompare(bStr);
+    return sortOption.direction === 'asc' ? comparison : -comparison;
+  });
 };
 
 const initialState: DataState = {
@@ -131,7 +238,9 @@ const initialState: DataState = {
   error: null,
   lastUpdated: new Date(),
   filteredStudents: [],
-  searchQuery: ''
+  searchQuery: '',
+  filters: {},
+  sorting: undefined
 };
 
 interface DataProviderProps {
@@ -200,83 +309,20 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, []);
 
   const setFilters = useCallback((filters: FilterOptions) => {
-    // Apply filters to students
-    let filtered = state.students;
-    
-    if (filters.graduationYear) {
-      filtered = filtered.filter(student => student.graduationYear === filters.graduationYear);
-    }
-    
-    if (filters.highSchool) {
-      filtered = filtered.filter(student => 
-        student.highSchool.toLowerCase().includes(filters.highSchool!.toLowerCase())
-      );
-    }
-    
-    if (filters.parentFormCompleted !== undefined) {
-      filtered = filtered.filter(student => student.parentForm === filters.parentFormCompleted);
-    }
-    
-    if (filters.careerExplorationCompleted !== undefined) {
-      filtered = filtered.filter(student => 
-        filters.careerExplorationCompleted 
-          ? !!student.careerExploration 
-          : !student.careerExploration
-      );
-    }
-    
-    if (filters.collegeExplorationCompleted !== undefined) {
-      filtered = filtered.filter(student => 
-        filters.collegeExplorationCompleted 
-          ? !!student.collegeExploration 
-          : !student.collegeExploration
-      );
-    }
-    
-    // Apply search query if it exists
-    if (state.searchQuery) {
-      filtered = filterStudents(filtered, state.searchQuery);
-    }
-    
-    dispatch({ type: 'SET_FILTERED_STUDENTS', payload: filtered });
-  }, [state.students, state.searchQuery]);
+    dispatch({ type: 'SET_FILTERS', payload: filters });
+  }, []);
 
   const setSorting = useCallback((sort: SortOption) => {
-    const sorted = [...state.filteredStudents].sort((a, b) => {
-      const aValue = a[sort.field];
-      const bValue = b[sort.field];
-      
-      // Handle different data types
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        const comparison = aValue.localeCompare(bValue);
-        return sort.direction === 'asc' ? comparison : -comparison;
-      }
-      
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        const comparison = aValue - bValue;
-        return sort.direction === 'asc' ? comparison : -comparison;
-      }
-      
-      if (aValue instanceof Date && bValue instanceof Date) {
-        const comparison = aValue.getTime() - bValue.getTime();
-        return sort.direction === 'asc' ? comparison : -comparison;
-      }
-      
-      // Fallback to string comparison
-      const aStr = String(aValue || '');
-      const bStr = String(bValue || '');
-      const comparison = aStr.localeCompare(bStr);
-      return sort.direction === 'asc' ? comparison : -comparison;
-    });
-    
-    dispatch({ type: 'SET_FILTERED_STUDENTS', payload: sorted });
-  }, [state.filteredStudents]);
+    dispatch({ type: 'SET_SORTING', payload: sort });
+  }, []);
 
   const refreshData = useCallback(async (accessToken: string) => {
     await fetchStudents(accessToken);
   }, [fetchStudents]);
 
-  const value: DataContextType = {
+  // Memoize the context value to prevent unnecessary re-renders of consumers
+  // when the state or callbacks haven't actually changed
+  const value: DataContextType = useMemo(() => ({
     state,
     fetchStudents,
     addStudent,
@@ -286,7 +332,17 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     setFilters,
     setSorting,
     refreshData,
-  };
+  }), [
+    state,
+    fetchStudents,
+    addStudent,
+    updateStudent,
+    deleteStudent,
+    setSearchQuery,
+    setFilters,
+    setSorting,
+    refreshData,
+  ]);
 
   return (
     <DataContext.Provider value={value}>

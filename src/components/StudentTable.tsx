@@ -283,11 +283,14 @@ const StudentTable: React.FC = () => {
     setDetailsDialogOpen(true);
   };
 
-  // Transform students data for DataGrid
-  const rows = state.filteredStudents.map(student => ({
-    ...student,
-    id: student.id, // DataGrid requires an 'id' field
-  }));
+  // Memoize the rows transformation to avoid recalculating on every render
+  // Only recalculate when filteredStudents actually changes
+  const rows = useMemo(() => {
+    return state.filteredStudents.map(student => ({
+      ...student,
+      id: student.id, // DataGrid requires an 'id' field
+    }));
+  }, [state.filteredStudents]);
 
   return (
     <Box>

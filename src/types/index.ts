@@ -57,6 +57,8 @@ export interface DataState {
   lastUpdated: Date;
   filteredStudents: Student[];
   searchQuery: string;
+  filters: FilterOptions;
+  sorting?: SortOption;
 }
 
 export interface AuthState {
