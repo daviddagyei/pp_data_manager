@@ -66,6 +66,7 @@ import {
 } from '@mui/icons-material';
 import { useData } from '../contexts/DataContext';
 import { useDebounce } from '../hooks/useDebounce';
+import ExportButton from './ExportButton';
 import type { FilterOptions } from '../types';
 
 const SearchAndFilter: React.FC = () => {
@@ -175,6 +176,11 @@ const SearchAndFilter: React.FC = () => {
             }}
           />
         </Box>
+        
+        <ExportButton 
+          filteredStudents={state.filteredStudents}
+          disabled={state.loading}
+        />
         
         {hasActiveFilters && (
           <Button
