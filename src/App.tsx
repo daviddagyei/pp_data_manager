@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import ModernStudentDashboard from './components/ModernStudentDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
+import EnvironmentChecker from './components/EnvironmentChecker';
 import theme from './theme';
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        <EnvironmentChecker />
         <AuthProvider>
           <DataProvider>
             <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>

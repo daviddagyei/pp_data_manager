@@ -1,13 +1,21 @@
 /**
- * SearchAndFilter Component - Optimized Performance Implementation
+ * * 1. DEBOUNCED SEARCH I * Performance Benefits:
+ * - Reduces context updates from every keystroke to once per 1 second pause
+ * - Eliminates redundant calculations of filter options
+ * - Prevents unnecessary re-renders of components that consume context
+ * - Maintains responsive UI while optimizing heavy operations
+ *    - Uses local state for immediate UI feedback (localSearchQuery)
+ *    - Debounces context updates with 1000ms (1 second) delay to prevent excessive filtering
+ *    - Only triggers context updates when the debounced value actually changesrchAndFilter Component - Optimized Performance Implementation
  * 
  * This component provides search and filtering functionality for the student data
  * with several performance optimizations:
  * 
  * 1. DEBOUNCED SEARCH INPUT:
  *    - Uses local state for immediate UI feedback (localSearchQuery)
- *    - Debounces context updates with 300ms delay to prevent excessive filtering
+ *    - Debounces context updates with 500ms delay to prevent excessive filtering
  *    - Only triggers context updates when the debounced value actually changes
+ *    - Auto-focuses search input on mount and after results change for better UX
  * 
  * 2. MEMOIZED FILTER OPTIONS:
  *    - Filter dropdown options (graduation years, high schools) are computed only
@@ -25,13 +33,14 @@
  *    - Automatically syncs local search with context when cleared externally
  * 
  * Performance Benefits:
- * - Reduces context updates from every keystroke to once per 300ms pause
+ * - Reduces context updates from every keystroke to once per 500ms pause
  * - Eliminates redundant calculations of filter options
  * - Prevents unnecessary re-renders of components that consume context
  * - Maintains responsive UI while optimizing heavy operations
+ * - Auto-focuses search input for improved user experience
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Box,
   TextField,
@@ -65,8 +74,12 @@ const SearchAndFilter: React.FC = () => {
   // Local state for immediate UI updates
   const [localSearchQuery, setLocalSearchQuery] = useState(state.searchQuery);
   
+  // Create ref for search input to enable auto-focus
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
   // Debounce the search query to prevent excessive filtering operations
-  const debouncedSearchQuery = useDebounce(localSearchQuery, 300);
+  // Increased to 1000ms (1 second) for optimal performance with larger datasets
+  const debouncedSearchQuery = useDebounce(localSearchQuery, 1000);
   
   // Apply debounced search query to the context only when it changes
   useEffect(() => {
@@ -81,6 +94,18 @@ const SearchAndFilter: React.FC = () => {
       setLocalSearchQuery(state.searchQuery);
     }
   }, [state.searchQuery, localSearchQuery, debouncedSearchQuery]);
+
+  // Auto-focus search input on component mount and after re-renders when no modal dialogs are open
+  useEffect(() => {
+    // Small delay to ensure the component is fully rendered
+    const timer = setTimeout(() => {
+      if (searchInputRef.current && !document.querySelector('[role="dialog"]')) {
+        searchInputRef.current.focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [state.filteredStudents.length]); // Re-focus when results change
 
   // Memoize filter options to avoid recalculating on every render
   const filterOptions = useMemo(() => {
@@ -104,7 +129,7 @@ const SearchAndFilter: React.FC = () => {
   const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const query = event.target.value;
     setLocalSearchQuery(query);
-    // The debounced effect above will handle updating the context after 300ms
+    // The debounced effect above will handle updating the context after 1 second
   }, []);
 
   // Optimized filter change handler - updates context immediately for filters
@@ -136,6 +161,7 @@ const SearchAndFilter: React.FC = () => {
             placeholder="Search students by name, email, or school..."
             value={localSearchQuery}
             onChange={handleSearchChange}
+            inputRef={searchInputRef}
             InputProps={{
               startAdornment: <Search sx={{ color: 'text.secondary', mr: 1 }} />,
               endAdornment: localSearchQuery && (

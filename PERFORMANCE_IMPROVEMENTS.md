@@ -10,9 +10,10 @@ This document outlines the comprehensive performance improvements made to the se
 **Problem:** The search input was updating global context state on every character typed, causing all context consumers to re-render continuously.
 
 **Solution:** 
-- Implemented debounced search with 300ms delay using the existing `useDebounce` hook
+- Implemented debounced search with 1000ms (1 second) delay using the existing `useDebounce` hook
 - Separated immediate UI updates (local state) from expensive filtering operations (context state)
 - Search results now update only after user stops typing, not on every keystroke
+- Added auto-focus functionality to improve user experience
 
 ### 2. **Inefficient Filter Option Computation**
 **Problem:** Dropdown filter options (graduation years, high schools) were recalculated on every component render, even when the underlying data hadn't changed.
@@ -44,7 +45,7 @@ This document outlines the comprehensive performance improvements made to the se
 ```typescript
 // 1. Debounced Search Implementation
 const [localSearchQuery, setLocalSearchQuery] = useState(state.searchQuery);
-const debouncedSearchQuery = useDebounce(localSearchQuery, 300);
+const debouncedSearchQuery = useDebounce(localSearchQuery, 1000);
 
 // Effect only updates context when debounced value changes
 useEffect(() => {
@@ -142,7 +143,7 @@ const rows = useMemo(() => {
 - ❌ No memoization of expensive operations
 
 ### After Optimization:
-- ✅ Search triggers filtering only after 300ms pause in typing
+- ✅ Search triggers filtering only after 1 second pause in typing
 - ✅ Filter options cached and recalculated only when data changes
 - ✅ Context consumers re-render only when filtered results actually change
 - ✅ Table rows memoized to prevent unnecessary recalculations

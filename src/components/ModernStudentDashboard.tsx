@@ -108,14 +108,13 @@ const ModernStudentDashboard: React.FC = () => {
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                Student Manager
+                Palouse Pathways Student Manager
               </Typography>
               <Typography
                 variant="body1"
                 color="text.secondary"
                 sx={{ mb: 4, lineHeight: 1.6 }}
               >
-                Welcome to your modern student management dashboard. 
                 Sign in with Google to get started.
               </Typography>
               

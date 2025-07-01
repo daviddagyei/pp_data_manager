@@ -12,9 +12,19 @@ class GoogleSheetsService {
     this.spreadsheetId = import.meta.env.VITE_GOOGLE_SHEETS_ID;
     this.apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
     
+    // Debug logging for environment variables
+    console.log('Environment variables check:', {
+      spreadsheetId: this.spreadsheetId ? 'Set' : 'Missing',
+      apiKey: this.apiKey ? 'Set' : 'Missing',
+      allEnvVars: import.meta.env
+    });
+    
     if (!this.spreadsheetId || !this.apiKey) {
-      // Consider a more specific error type or logging to a dedicated logging service
-      throw new Error('Google Sheets configuration is missing. Please check your environment variables.');
+      const missingVars = [];
+      if (!this.spreadsheetId) missingVars.push('VITE_GOOGLE_SHEETS_ID');
+      if (!this.apiKey) missingVars.push('VITE_GOOGLE_API_KEY');
+      
+      throw new Error(`Google Sheets configuration is missing. Missing variables: ${missingVars.join(', ')}. Please check your environment variables in Netlify dashboard.`);
     }
   }
 

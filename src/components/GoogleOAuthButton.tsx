@@ -112,10 +112,10 @@ const GoogleOAuthButton: React.FC<GoogleOAuthButtonProps> = ({
   return (
     <Box sx={{ textAlign: 'center', p: 3 }}>
       <Typography variant="h5" gutterBottom>
-        Student Management System
+        
       </Typography>
       <Typography variant="body1" color="textSecondary" sx={{ mb: 3 }}>
-        Sign in with Google to access and manage student data
+        
       </Typography>
       <Button
         variant="contained"
@@ -132,9 +132,6 @@ const GoogleOAuthButton: React.FC<GoogleOAuthButtonProps> = ({
       >
         Sign in with Google
       </Button>
-      <Typography variant="caption" display="block" sx={{ mt: 2, color: 'text.secondary' }}>
-        This app requires access to Google Sheets to manage student data
-      </Typography>
     </Box>
   );
 };
