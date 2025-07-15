@@ -26,6 +26,7 @@ import StudentTable from './StudentTable';
 import SearchAndFilter from './SearchAndFilter';
 import LoadingSpinner from './LoadingSpinner';
 import GoogleOAuthButton from './GoogleOAuthButton';
+import SignInSheetSection from './SignInSheetSection';
 import { colorTokens } from '../theme';
 
 const ModernStudentDashboard: React.FC = () => {
@@ -294,6 +295,7 @@ const ModernStudentDashboard: React.FC = () => {
         <AnimatePresence mode="wait">
           {currentPage === 'dashboard' && <DashboardContent />}
           {currentPage === 'students' && <DashboardContent />}
+          {currentPage === 'signins' && <SignInSheetSection />}
           {currentPage === 'settings' && (
             <Container maxWidth="xl" sx={{ py: 4 }}>
               <Typography variant="h4">Settings</Typography>

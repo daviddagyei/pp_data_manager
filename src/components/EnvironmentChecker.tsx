@@ -33,20 +33,7 @@ const EnvironmentChecker: React.FC = () => {
       fontSize: '12px',
       fontFamily: 'monospace'
     }}>
-      <strong>Environment Variables Status:</strong>
-      {missingVars.length > 0 ? (
-        <div>
-          ❌ Missing: {missingVars.join(', ')}
-          <br />
-          📝 Configure these in your Netlify dashboard under Site Settings → Environment Variables
-        </div>
-      ) : (
-        <div>✅ All environment variables are configured</div>
-      )}
-      <details style={{ marginTop: '5px' }}>
-        <summary>View all variables</summary>
-        <pre>{JSON.stringify(envVars, null, 2)}</pre>
-      </details>
+      {/* Debug environment variable status removed as requested */}
     </div>
   );
 };

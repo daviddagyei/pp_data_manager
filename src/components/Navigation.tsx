@@ -44,12 +44,14 @@ interface NavigationProps {
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Dashboard },
   { id: 'students', label: 'Students', icon: People },
+  { id: 'signins', label: 'Sign-Ins', icon: AccountCircle },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 const breadcrumbMap: Record<string, string[]> = {
   dashboard: ['Home', 'Dashboard'],
   students: ['Home', 'Students'],
+  signins: ['Home', 'Sign-Ins'],
   settings: ['Home', 'Settings'],
 };
 
