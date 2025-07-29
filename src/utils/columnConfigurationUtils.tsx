@@ -1,4 +1,3 @@
-import React from 'react';
 import type { GridColDef } from '@mui/x-data-grid';
 import type { ColumnSettings } from '../contexts/SettingsContext';
 import { 
@@ -15,7 +14,7 @@ import { Box, Chip } from '@mui/material';
  */
 export const convertToDataGridColumns = (
   columnSettings: ColumnSettings[],
-  includeActions: boolean = true
+  _includeActions: boolean = true
 ): GridColDef[] => {
   const visibleColumns = columnSettings.filter(col => col.visible);
   

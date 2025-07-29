@@ -8,11 +8,11 @@ export class ColumnManagementService {
   static async addColumnToSheet(
     accessToken: string, 
     column: ColumnSettings,
-    spreadsheetId: string
+    _spreadsheetId: string
   ): Promise<boolean> {
     try {
       // First, we need to get the current sheet structure
-      const currentData = await googleSheetsService.fetchStudents(accessToken);
+      await googleSheetsService.fetchStudents(accessToken);
       
       // Find the next available column (this is a simplified approach)
       // In a real implementation, you'd want to inspect the sheet headers
@@ -36,9 +36,9 @@ export class ColumnManagementService {
    * Remove a column from Google Sheets
    */
   static async removeColumnFromSheet(
-    accessToken: string,
+    _accessToken: string,
     columnId: string,
-    spreadsheetId: string
+    _spreadsheetId: string
   ): Promise<boolean> {
     try {
       // This would implement the actual removal logic
