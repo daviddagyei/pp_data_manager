@@ -98,6 +98,14 @@ const StudentTable: React.FC = () => {
           ),
         };
       
+      case 'graduationYear':
+        return {
+          ...baseColumn,
+          renderCell: (params) => (
+            params.value ? params.value.toString() : '-'
+          ),
+        };
+      
       case 'parentForm':
         return {
           ...baseColumn,
