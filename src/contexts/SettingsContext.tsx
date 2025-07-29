@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { GoogleSheetsColumnService } from '../services/GoogleSheetsColumnService';
 
 export interface ColumnSettings {
   id: string;
@@ -236,12 +237,13 @@ interface SettingsContextType {
   state: SettingsState;
   setRecordsPerPage: (count: number) => void;
   toggleColumnVisibility: (columnId: string) => void;
-  addCustomColumn: (column: Omit<ColumnSettings, 'id' | 'isCustom'>) => void;
-  removeCustomColumn: (columnId: string) => void;
+  addCustomColumn: (column: Omit<ColumnSettings, 'id' | 'isCustom'>) => Promise<void>;
+  removeCustomColumn: (columnId: string) => Promise<void>;
   updateColumnSettings: (column: ColumnSettings) => void;
   renameColumn: (id: string, newName: string, newField?: string) => void;
   reorderColumns: (columns: ColumnSettings[]) => void;
   resetToDefaults: () => void;
+  syncWithGoogleSheets: () => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -356,6 +358,28 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   }, [state.settings, authState.user?.email]); // Re-run when settings or user changes
 
+  // Sync with Google Sheets when user is authenticated and settings are loaded
+  useEffect(() => {
+    const performSync = async () => {
+      // Only sync if user is authenticated and we have custom columns
+      if (!authState.user?.accessToken || !authState.isAuthenticated) return;
+      
+      const hasCustomColumns = state.settings.dataDisplay.columnSettings.some(col => col.isCustom);
+      if (!hasCustomColumns) return;
+
+      try {
+        await syncWithGoogleSheets();
+      } catch (error) {
+        console.error('Auto-sync with Google Sheets failed:', error);
+      }
+    };
+
+    // Add a small delay to ensure settings are fully loaded
+    const timeoutId = setTimeout(performSync, 1000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [authState.isAuthenticated, authState.user?.accessToken]); // Only run when auth state changes
+
   const setRecordsPerPage = (count: number) => {
     dispatch({ type: 'SET_RECORDS_PER_PAGE', payload: count });
   };
@@ -364,7 +388,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     dispatch({ type: 'TOGGLE_COLUMN_VISIBILITY', payload: columnId });
   };
 
-  const addCustomColumn = (column: Omit<ColumnSettings, 'id' | 'isCustom'>) => {
+  const addCustomColumn = async (column: Omit<ColumnSettings, 'id' | 'isCustom'>) => {
     const maxOrder = Math.max(...state.settings.dataDisplay.columnSettings.map(col => col.order || 0));
     const newColumn: ColumnSettings = {
       ...column,
@@ -373,11 +397,46 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       visible: true,
       order: maxOrder + 1,
     };
+
+    // Add to local state first
     dispatch({ type: 'ADD_CUSTOM_COLUMN', payload: newColumn });
+
+    // Sync to Google Sheets
+    try {
+      if (authState.user?.accessToken) {
+        const columnService = new GoogleSheetsColumnService();
+        await columnService.addColumn(authState.user.accessToken, newColumn.headerName);
+        console.log(`Successfully synced column '${newColumn.headerName}' to Google Sheets`);
+      }
+    } catch (error) {
+      console.error('Failed to sync column to Google Sheets:', error);
+      // Optionally show user notification that column was added locally but not synced
+    }
   };
 
-  const removeCustomColumn = (columnId: string) => {
+  const removeCustomColumn = async (columnId: string) => {
+    // Find the column to get its header name before removing it
+    const columnToRemove = state.settings.dataDisplay.columnSettings.find((col: ColumnSettings) => col.id === columnId);
+    
+    if (!columnToRemove) {
+      throw new Error('Column not found');
+    }
+
+    // Remove from local state first
     dispatch({ type: 'REMOVE_CUSTOM_COLUMN', payload: columnId });
+
+    // Try to remove from Google Sheets if authenticated
+    if (authState.user?.accessToken && columnToRemove.isCustom) {
+      try {
+        const columnService = new GoogleSheetsColumnService();
+        await columnService.removeColumn(authState.user.accessToken, columnToRemove.headerName);
+        console.log(`Successfully removed column '${columnToRemove.headerName}' from Google Sheets`);
+      } catch (error) {
+        console.error('Failed to remove column from Google Sheets:', error);
+        // Don't throw here - the column was already removed from local state
+        // Optionally show user notification that column was removed locally but not synced
+      }
+    }
   };
 
   const updateColumnSettings = (column: ColumnSettings) => {
@@ -400,6 +459,38 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     dispatch({ type: 'SET_SETTINGS', payload: defaultSettings });
   };
 
+  const syncWithGoogleSheets = async () => {
+    if (!authState.user?.accessToken) {
+      console.warn('Cannot sync: User not authenticated');
+      return;
+    }
+
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'SET_ERROR', payload: null });
+
+      const columnService = new GoogleSheetsColumnService();
+      const missingColumnIds = await columnService.detectMissingCustomColumns(
+        authState.user.accessToken,
+        state.settings.dataDisplay.columnSettings
+      );
+
+      // Remove missing columns from local settings
+      if (missingColumnIds.length > 0) {
+        console.log(`Removing ${missingColumnIds.length} missing custom columns:`, missingColumnIds);
+        
+        for (const columnId of missingColumnIds) {
+          dispatch({ type: 'REMOVE_CUSTOM_COLUMN', payload: columnId });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to sync with Google Sheets:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to sync with Google Sheets' });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
+
   const value: SettingsContextType = {
     state,
     setRecordsPerPage,
@@ -410,6 +501,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     renameColumn,
     reorderColumns,
     resetToDefaults,
+    syncWithGoogleSheets,
   };
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

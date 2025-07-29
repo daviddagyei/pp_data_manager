@@ -7,7 +7,6 @@ import {
   Select,
   MenuItem,
   Switch,
-  Button,
   Card,
   CardContent,
   Chip,
@@ -15,13 +14,11 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
-  Alert,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
 import {
   Visibility,
   VisibilityOff,
-  RestoreRounded,
 } from '@mui/icons-material';
 import { useDataDisplaySettings } from '../../hooks/useDataDisplaySettings';
 
@@ -29,8 +26,7 @@ const DataDisplaySettings: React.FC = () => {
   const { 
     state, 
     setRecordsPerPage, 
-    toggleColumnVisibility, 
-    resetToDefaults 
+    toggleColumnVisibility
   } = useDataDisplaySettings();
 
   const { dataDisplay } = state.settings;
@@ -44,12 +40,7 @@ const DataDisplaySettings: React.FC = () => {
     toggleColumnVisibility(columnId);
   };
 
-  const handleResetToDefaults = () => {
-    resetToDefaults();
-  };
-
   const visibleColumnsCount = columnSettings.filter(col => col.visible).length;
-  const defaultColumns = columnSettings.filter(col => !col.isCustom);
   const customColumns = columnSettings.filter(col => col.isCustom);
 
   return (
@@ -100,11 +91,22 @@ const DataDisplaySettings: React.FC = () => {
             
             <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
               <List dense>
-                {defaultColumns.map((column) => (
+                {columnSettings.map((column) => (
                   <ListItem key={column.id} sx={{ px: 0 }}>
                     <ListItemText 
-                      primary={column.headerName}
-                      secondary={`${column.width}px width`}
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>{column.headerName}</span>
+                          {column.isCustom && (
+                            <Chip 
+                              label="Custom" 
+                              size="small" 
+                              variant="outlined" 
+                              sx={{ fontSize: '0.6rem', height: 16 }} 
+                            />
+                          )}
+                        </Box>
+                      }
                     />
                     <ListItemSecondaryAction>
                       <Switch
@@ -122,33 +124,9 @@ const DataDisplaySettings: React.FC = () => {
         </Card>
       </Box>
 
-      {/* Actions */}
+      {/* Custom Columns Section */}
       <Card variant="outlined">
         <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                Settings Actions
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Manage your display preferences and restore defaults.
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              startIcon={<RestoreRounded />}
-              onClick={handleResetToDefaults}
-              size="small"
-            >
-              Reset to Defaults
-            </Button>
-          </Box>
-
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Settings are automatically saved and will persist across browser sessions.
-          </Alert>
-
-          {/* Custom Columns Section */}
           <Box sx={{ mt: 2 }}>
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
               Custom Columns
@@ -168,7 +146,7 @@ const DataDisplaySettings: React.FC = () => {
               </Box>
             ) : (
               <Typography variant="body2" color="text.secondary">
-                No custom columns added yet. Custom column functionality will be available in a future update.
+                No custom columns added yet.
               </Typography>
             )}
           </Box>

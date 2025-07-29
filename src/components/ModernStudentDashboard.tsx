@@ -11,7 +11,6 @@ import {
   useTheme,
 } from '@mui/material';
 import {
-  PersonAdd,
   School,
   Logout,
 } from '@mui/icons-material';
@@ -214,17 +213,6 @@ const ModernStudentDashboard: React.FC = () => {
               Here's an overview of your student management system.
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Button
-                variant="contained"
-                startIcon={<PersonAdd />}
-                sx={{
-                  borderRadius: 2,
-                  px: 3,
-                  py: 1.5,
-                }}
-              >
-                Add Student
-              </Button>
               <Button
                 variant="outlined"
                 onClick={logout}

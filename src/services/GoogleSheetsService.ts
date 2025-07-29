@@ -2,15 +2,18 @@ import axios from 'axios';
 import type { AxiosResponse } from 'axios';
 import type { Student, GoogleSheetsResponse, SheetMetadata, BatchUpdate } from '../types';
 import { DataTransformService } from './DataTransformService';
+import { GoogleSheetsColumnService } from './GoogleSheetsColumnService';
 
 class GoogleSheetsService {
   private readonly baseUrl = 'https://sheets.googleapis.com/v4';
   private readonly spreadsheetId: string;
   private readonly apiKey: string;
+  private readonly columnService: GoogleSheetsColumnService;
   
   constructor() {
     this.spreadsheetId = import.meta.env.VITE_GOOGLE_SHEETS_ID;
     this.apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+    this.columnService = new GoogleSheetsColumnService();
     
     // Debug logging for environment variables
     console.log('Environment variables check:', {
@@ -68,14 +71,21 @@ class GoogleSheetsService {
   }
 
   /**
-   * Add a new student to the Google Sheet
+   * Add a new student to the Google Sheet with dynamic column support
    */
   async addStudent(accessToken: string, student: Partial<Student>): Promise<Student> {
     try {
+      // Get current headers to ensure we write to the correct columns
+      const headers = await this.columnService.getSheetHeaders(accessToken);
+      
       const range = 'AllScholars'; // Updated sheet name for append
       const url = `${this.baseUrl}/spreadsheets/${this.spreadsheetId}/values/${range}:append`;
       
-      const rowData = DataTransformService.transformStudentToSheetsRow(student as Student);
+      // Use dynamic transformation based on current sheet structure
+      const rowData = DataTransformService.transformStudentToSheetsRowDynamic(
+        student as Student, 
+        headers
+      );
       
       const response = await axios.post(url, {
         values: [rowData],
@@ -92,7 +102,8 @@ class GoogleSheetsService {
         ...student as Student,
         id: this.generateStudentIdInternal(),
         rowIndex: this.getRowIndexFromResponse(response.data), 
-        lastModified: new Date()
+        lastModified: new Date(),
+        customFields: student.customFields || {}
       };
 
       return newStudent;
@@ -108,10 +119,19 @@ class GoogleSheetsService {
    */
   async updateStudent(accessToken: string, rowIndex: number, student: Partial<Student>): Promise<Student> {
     try {
-      const range = `'AllScholars'!A${rowIndex}:Q${rowIndex}`; // Updated sheet name and quoted
+      // Get current headers to ensure we write to the correct columns
+      const headers = await this.columnService.getSheetHeaders(accessToken);
+      
+      // Calculate the range dynamically based on the number of columns
+      const endColumn = this.numberToColumnLetter(headers.length);
+      const range = `'AllScholars'!A${rowIndex}:${endColumn}${rowIndex}`;
       const url = `${this.baseUrl}/spreadsheets/${this.spreadsheetId}/values/${range}`;
       
-      const rowData = DataTransformService.transformStudentToSheetsRow(student as Student);
+      // Use dynamic transformation based on current sheet structure
+      const rowData = DataTransformService.transformStudentToSheetsRowDynamic(
+        student as Student, 
+        headers
+      );
       
       await axios.put(url, {
         values: [rowData],
@@ -126,7 +146,8 @@ class GoogleSheetsService {
       return {
         ...student as Student,
         rowIndex,
-        lastModified: new Date()
+        lastModified: new Date(),
+        customFields: student.customFields || {}
       };
     } catch (error) {
       console.error('Error updating student:', error);
@@ -265,6 +286,59 @@ class GoogleSheetsService {
     // Consider throwing an error or returning a more indicative value if parsing fails
     return -1; 
   }
+
+  /**
+   * Column management methods using the GoogleSheetsColumnService
+   */
+
+  /**
+   * Add a new column to the Google Sheet
+   */
+  async addColumn(accessToken: string, columnName: string, insertAfterColumn?: number): Promise<void> {
+    return this.columnService.addColumn(accessToken, columnName, insertAfterColumn);
+  }
+
+  /**
+   * Rename a column in the Google Sheet
+   */
+  async renameColumn(accessToken: string, oldColumnName: string, newColumnName: string): Promise<void> {
+    return this.columnService.renameColumn(accessToken, oldColumnName, newColumnName);
+  }
+
+  /**
+   * Remove a column from the Google Sheet
+   */
+  async removeColumn(accessToken: string, columnName: string): Promise<void> {
+    return this.columnService.removeColumn(accessToken, columnName);
+  }
+
+  /**
+   * Get current sheet headers
+   */
+  async getSheetHeaders(accessToken: string): Promise<string[]> {
+    return this.columnService.getSheetHeaders(accessToken);
+  }
+
+  /**
+   * Sync column settings with Google Sheets structure
+   */
+  async syncColumnSettings(accessToken: string, columnSettings: any[]): Promise<any> {
+    return this.columnService.syncColumnSettings(accessToken, columnSettings);
+  }
+
+  /**
+   * Convert a number to column letter (A, B, C, ... Z, AA, AB, etc.)
+   */
+  private numberToColumnLetter(num: number): string {
+    let columnLetter = '';
+    while (num > 0) {
+      num--; // Adjust for 0-based indexing
+      columnLetter = String.fromCharCode(65 + (num % 26)) + columnLetter;
+      num = Math.floor(num / 26);
+    }
+    return columnLetter;
+  }
+
 }
 
 export const googleSheetsService = new GoogleSheetsService();

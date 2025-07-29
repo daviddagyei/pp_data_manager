@@ -1,17 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Typography,
   Paper,
   Box,
+  Button,
+  Divider,
 } from '@mui/material';
 import {
   ViewColumn,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import DataDisplaySettings from './SimpleDataDisplaySettings';
+import { ColumnManagementDialog } from '../ColumnManagementDialog';
 
 const SettingsPage: React.FC = () => {
+  const [columnDialogOpen, setColumnDialogOpen] = useState(false);
+
   return (
     <Container maxWidth="lg" sx={{ py: 2 }}>
       <motion.div
@@ -50,10 +56,47 @@ const SettingsPage: React.FC = () => {
               </Box>
             </Box>
 
+            {/* Custom Column Management Section */}
+            <Paper 
+              sx={{ 
+                p: 3, 
+                mb: 3, 
+                bgcolor: 'grey.50',
+                border: '1px solid',
+                borderColor: 'grey.200'
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box>
+                  <Typography variant="h6" gutterBottom>
+                    Custom Columns
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Add custom fields to collect additional student information
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setColumnDialogOpen(true)}
+                  sx={{ minWidth: 140 }}
+                >
+                  Manage Columns
+                </Button>
+              </Box>
+            </Paper>
+
+            <Divider sx={{ my: 3 }} />
+
             <DataDisplaySettings />
           </Box>
         </Paper>
       </motion.div>
+
+      <ColumnManagementDialog
+        open={columnDialogOpen}
+        onClose={() => setColumnDialogOpen(false)}
+      />
     </Container>
   );
 };

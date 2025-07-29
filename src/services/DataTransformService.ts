@@ -94,7 +94,9 @@ export class DataTransformService {
             if (!student.customFields) {
               student.customFields = {};
             }
-            student.customFields[header] = value.trim();
+            // Store custom field using generated field name for consistency with writing
+            const fieldName = this.generateFieldName(header);
+            student.customFields[fieldName] = value.trim();
           }
           break;
       }
@@ -111,6 +113,9 @@ export class DataTransformService {
 
   /**
    * Convert Student object to Google Sheets row format
+   */
+  /**
+   * Transform student to sheets row with static column order (legacy method)
    */
   static transformStudentToSheetsRow(student: Student): string[] {
     return [
@@ -132,6 +137,103 @@ export class DataTransformService {
       student.spreadsheetSubmitted || '',
       student.places?.toString() || ''
     ];
+  }
+
+  /**
+   * Transform student to sheets row based on dynamic headers
+   */
+  static transformStudentToSheetsRowDynamic(student: Student, headers: string[]): string[] {
+    return headers.map(header => {
+      const normalizedHeader = this.normalizeHeader(header);
+      
+      // Handle standard fields
+      switch (normalizedHeader) {
+        case 'lastname':
+          return student.lastName || '';
+        case 'firstname':
+          return student.firstName || '';
+        case 'email':
+          return student.email || '';
+        case 'cellnumber':
+        case 'cellnumberxxxxx':
+        case 'cellnumberxxxxxxxxx':
+        case 'phone':
+        case 'phonenumber':
+        case 'cellphone':
+        case 'cell':
+        case 'mobile':
+        case 'mobilenumber':
+          return student.cellNumber || '';
+        case 'parentsname':
+        case 'parentname':
+          return student.parentName || '';
+        case 'parentscell':
+        case 'parentcell':
+          return student.parentCell || '';
+        case 'parentsemail':
+        case 'parentemail':
+          return student.parentEmail || '';
+        case 'highschool':
+          return student.highSchool || '';
+        case 'graduationyear':
+          return student.graduationYear?.toString() || '';
+        case 'dob':
+          return student.dob ? this.formatDateForSheets(student.dob) : '';
+        case 'parentform':
+          return student.parentForm ? 'x' : '';
+        case 'careerexploration':
+          return student.careerExploration ? this.formatDateForSheets(student.careerExploration) : '';
+        case 'collegeexploration':
+          return student.collegeExploration ? this.formatDateForSheets(student.collegeExploration) : '';
+        case 'collegeenrolledfall2025':
+        case 'collegeenrolled':
+          return student.collegeEnrolled ? 'Yes' : '';
+        case 'participationpoints':
+          return student.participationPoints?.toString() || '';
+        case 'spreadsheetsubmitted':
+          return student.spreadsheetSubmitted || '';
+        case 'places':
+          return student.places?.toString() || '';
+        default:
+          // Handle custom fields - now that we consistently store using field names
+          let customValue = undefined;
+          
+          if (student.customFields) {
+            // Primary approach: Generate field name from header and look it up
+            const fieldName = this.generateFieldName(header);
+            if (student.customFields[fieldName] !== undefined) {
+              customValue = student.customFields[fieldName];
+            }
+            // Fallback: Direct header match (for backwards compatibility)
+            else if (student.customFields[header] !== undefined) {
+              customValue = student.customFields[header];
+            }
+          }
+          
+          if (customValue !== undefined && customValue !== null) {
+            // Format based on type
+            if (customValue instanceof Date) {
+              return this.formatDateForSheets(customValue);
+            } else if (typeof customValue === 'boolean') {
+              return customValue ? 'Yes' : 'No';
+            } else {
+              return String(customValue);
+            }
+          }
+          return '';
+      }
+    });
+  }
+
+  /**
+   * Generate field name from header name (same logic as in ColumnManagementDialog)
+   */
+  private static generateFieldName(headerName: string): string {
+    return headerName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
   }
 
   /**

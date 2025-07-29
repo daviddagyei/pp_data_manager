@@ -13,6 +13,12 @@ interface DataContextType {
   setFilters: (filters: FilterOptions) => void;
   setSorting: (sort: SortOption) => void;
   refreshData: (accessToken: string) => Promise<void>;
+  // Column management methods
+  addSheetColumn: (accessToken: string, columnName: string, insertAfterColumn?: number) => Promise<void>;
+  renameSheetColumn: (accessToken: string, oldColumnName: string, newColumnName: string) => Promise<void>;
+  removeSheetColumn: (accessToken: string, columnName: string) => Promise<void>;
+  syncSheetColumns: (accessToken: string, columnSettings: any[]) => Promise<any>;
+  getSheetHeaders: (accessToken: string) => Promise<string[]>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -320,6 +326,71 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     await fetchStudents(accessToken);
   }, [fetchStudents]);
 
+  // Column management methods
+  const addSheetColumn = useCallback(async (
+    accessToken: string, 
+    columnName: string, 
+    insertAfterColumn?: number
+  ) => {
+    try {
+      await googleSheetsService.addColumn(accessToken, columnName, insertAfterColumn);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add column';
+      dispatch({ type: 'FETCH_ERROR', payload: errorMessage });
+      throw error;
+    }
+  }, []);
+
+  const renameSheetColumn = useCallback(async (
+    accessToken: string,
+    oldColumnName: string,
+    newColumnName: string
+  ) => {
+    try {
+      await googleSheetsService.renameColumn(accessToken, oldColumnName, newColumnName);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to rename column';
+      dispatch({ type: 'FETCH_ERROR', payload: errorMessage });
+      throw error;
+    }
+  }, []);
+
+  const removeSheetColumn = useCallback(async (
+    accessToken: string,
+    columnName: string
+  ) => {
+    try {
+      await googleSheetsService.removeColumn(accessToken, columnName);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to remove column';
+      dispatch({ type: 'FETCH_ERROR', payload: errorMessage });
+      throw error;
+    }
+  }, []);
+
+  const syncSheetColumns = useCallback(async (
+    accessToken: string,
+    columnSettings: any[]
+  ) => {
+    try {
+      return await googleSheetsService.syncColumnSettings(accessToken, columnSettings);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to sync columns';
+      dispatch({ type: 'FETCH_ERROR', payload: errorMessage });
+      throw error;
+    }
+  }, []);
+
+  const getSheetHeaders = useCallback(async (accessToken: string) => {
+    try {
+      return await googleSheetsService.getSheetHeaders(accessToken);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get sheet headers';
+      dispatch({ type: 'FETCH_ERROR', payload: errorMessage });
+      throw error;
+    }
+  }, []);
+
   // Memoize the context value to prevent unnecessary re-renders of consumers
   // when the state or callbacks haven't actually changed
   const value: DataContextType = useMemo(() => ({
@@ -332,6 +403,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     setFilters,
     setSorting,
     refreshData,
+    addSheetColumn,
+    renameSheetColumn,
+    removeSheetColumn,
+    syncSheetColumns,
+    getSheetHeaders,
   }), [
     state,
     fetchStudents,
@@ -342,6 +418,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     setFilters,
     setSorting,
     refreshData,
+    addSheetColumn,
+    renameSheetColumn,
+    removeSheetColumn,
+    syncSheetColumns,
+    getSheetHeaders,
   ]);
 
   return (

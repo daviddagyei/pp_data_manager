@@ -21,6 +21,7 @@ import {
   TrendingUp,
 } from '@mui/icons-material';
 import type { Student } from '../types';
+import { useSettings } from '../contexts/SettingsContext';
 
 interface StudentDetailsDialogProps {
   open: boolean;
@@ -33,7 +34,11 @@ const StudentDetailsDialog: React.FC<StudentDetailsDialogProps> = ({
   onClose,
   student,
 }) => {
+  const { state: settingsState } = useSettings();
+
   if (!student) return null;
+
+  const customColumns = settingsState.settings.dataDisplay.columnSettings.filter(col => col.isCustom && col.visible);
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return 'Not set';
@@ -48,6 +53,25 @@ const StudentDetailsDialog: React.FC<StudentDetailsDialogProps> = ({
       return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
     }
     return phone;
+  };
+
+  const formatCustomFieldValue = (value: any, type: string) => {
+    if (value === undefined || value === null || value === '') return 'Not provided';
+    
+    switch (type) {
+      case 'boolean':
+        return value ? 'Yes' : 'No';
+      case 'date':
+        return formatDate(value);
+      case 'number':
+        return value.toString();
+      case 'phone':
+        return formatPhoneNumber(value);
+      case 'email':
+      case 'string':
+      default:
+        return value.toString();
+    }
   };
 
   return (
@@ -293,7 +317,7 @@ const StudentDetailsDialog: React.FC<StudentDetailsDialogProps> = ({
           </Box>
 
           {/* Additional Information */}
-          {(student.spreadsheetSubmitted || student.places !== undefined || student.lastModified) && (
+          {(student.spreadsheetSubmitted || student.places !== undefined || student.lastModified || customColumns.length > 0) && (
             <Box>
               <Typography variant="h6" gutterBottom color="primary" fontWeight={600}>
                 Additional Information
@@ -301,6 +325,27 @@ const StudentDetailsDialog: React.FC<StudentDetailsDialogProps> = ({
               <Divider sx={{ mb: 2 }} />
               
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {/* Custom Fields */}
+                {customColumns.map((column) => {
+                  const value = student.customFields?.[column.field];
+                  return (
+                    <Box key={column.id}>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        {column.headerName}
+                      </Typography>
+                      <Typography variant="body1">
+                        {formatCustomFieldValue(value, column.type)}
+                      </Typography>
+                      {column.description && (
+                        <Typography variant="caption" color="text.secondary">
+                          {column.description}
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                })}
+
+                {/* Existing fields */}
                 {student.spreadsheetSubmitted && (
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>

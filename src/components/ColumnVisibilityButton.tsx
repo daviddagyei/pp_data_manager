@@ -9,9 +9,9 @@ import {
   Divider,
   Button,
   Chip,
+  Tooltip,
 } from '@mui/material';
 import {
-  ViewColumn,
   Visibility,
   VisibilityOff,
   Settings,
@@ -42,19 +42,21 @@ const ColumnVisibilityButton: React.FC<ColumnVisibilityButtonProps> = ({ onOpenS
 
   return (
     <>
-      <IconButton
-        onClick={handleClick}
-        sx={{
-          color: 'primary.main',
-          bgcolor: 'primary.50',
-          '&:hover': {
-            bgcolor: 'primary.100',
-          },
-        }}
-        size="small"
-      >
-        <ViewColumn />
-      </IconButton>
+      <Tooltip title="Column Visibility" arrow>
+        <IconButton
+          onClick={handleClick}
+          sx={{
+            color: 'primary.main',
+            bgcolor: 'primary.50',
+            '&:hover': {
+              bgcolor: 'primary.100',
+            },
+          }}
+          size="small"
+        >
+          <Visibility />
+        </IconButton>
+      </Tooltip>
 
       <Popover
         id={id}
