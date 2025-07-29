@@ -22,14 +22,17 @@ import {
 } from '@mui/icons-material';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { StudentFormDialog } from './StudentFormDialog.tsx';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog.tsx';
 import StudentDetailsDialog from './StudentDetailsDialog';
+import ColumnVisibilityButton from './ColumnVisibilityButton';
 import type { Student } from '../types';
 
 const StudentTable: React.FC = () => {
   const { state, addStudent, updateStudent, deleteStudent } = useData();
   const { state: authState } = useAuth();
+  const { state: settingsState } = useSettings();
   
   // Dialog states
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -45,126 +48,143 @@ const StudentTable: React.FC = () => {
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
 
-  const columns: GridColDef[] = useMemo(() => [
-    {
-      field: 'firstName',
-      headerName: 'First Name',
-      width: 120,
-      editable: false,
-    },
-    {
-      field: 'lastName',
-      headerName: 'Last Name',
-      width: 120,
-      editable: false,
-    },
-    {
-      field: 'email',
-      headerName: 'Email',
-      width: 200,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Email fontSize="small" color="action" />
-          {params.value}
-        </Box>
-      ),
-    },
-    {
-      field: 'cellNumber',
-      headerName: 'Cell Phone',
-      width: 130,
-      renderCell: (params) => (
-        params.value ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Phone fontSize="small" color="action" />
-            {params.value}
-          </Box>
-        ) : (
-          <span style={{ color: '#666' }}>-</span>
-        )
-      ),
-    },
-    {
-      field: 'highSchool',
-      headerName: 'High School',
-      width: 180,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <School fontSize="small" color="action" />
-          {params.value}
-        </Box>
-      ),
-    },
-    {
-      field: 'graduationYear',
-      headerName: 'Grad Year',
-      width: 100,
-      renderCell: (params) => (
-        <span>{params.value}</span>
-      ),
-    },
-    {
-      field: 'parentForm',
-      headerName: 'Parent Form',
-      width: 120,
-      renderCell: (params) => (
-        <Chip
-          label={params.value ? 'Complete' : 'Pending'}
-          color={params.value ? 'success' : 'default'}
-          variant="outlined"
-          size="small"
-        />
-      ),
-    },
-    {
-      field: 'careerExploration',
-      headerName: 'Career Exploration',
-      width: 150,
-      renderCell: (params) => (
-        params.value ? (
-          <Chip
-            label={new Date(params.value).toLocaleDateString()}
-            color="info"
-            variant="outlined"
-            size="small"
-          />
-        ) : (
-          <span style={{ color: '#666' }}>Not completed</span>
-        )
-      ),
-    },
-    {
-      field: 'collegeExploration',
-      headerName: 'College Exploration',
-      width: 160,
-      renderCell: (params) => (
-        params.value ? (
-          <Chip
-            label={new Date(params.value).toLocaleDateString()}
-            color="info"
-            variant="outlined"
-            size="small"
-          />
-        ) : (
-          <span style={{ color: '#666' }}>Not completed</span>
-        )
-      ),
-    },
-    {
-      field: 'participationPoints',
-      headerName: 'Points',
-      width: 80,
-      type: 'number',
-      renderCell: (params) => (
-        <Chip
-          label={params.value || 0}
-          color={params.value > 0 ? 'primary' : 'default'}
-          variant="filled"
-          size="small"
-        />
-      ),
-    },
-    {
+  // Function to create column definitions based on settings
+  const createColumnFromSettings = (columnSetting: any): GridColDef => {
+    const baseColumn: GridColDef = {
+      field: columnSetting.field,
+      headerName: columnSetting.headerName,
+      width: columnSetting.width,
+      editable: columnSetting.editable,
+      type: columnSetting.type === 'number' ? 'number' : undefined,
+    };
+
+    // Add custom rendering based on field type
+    switch (columnSetting.field) {
+      case 'email':
+        return {
+          ...baseColumn,
+          renderCell: (params) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Email fontSize="small" color="action" />
+              {params.value}
+            </Box>
+          ),
+        };
+      
+      case 'cellNumber':
+      case 'parentCell':
+        return {
+          ...baseColumn,
+          renderCell: (params) => (
+            params.value ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Phone fontSize="small" color="action" />
+                {params.value}
+              </Box>
+            ) : (
+              <span style={{ color: '#666' }}>-</span>
+            )
+          ),
+        };
+      
+      case 'highSchool':
+        return {
+          ...baseColumn,
+          renderCell: (params) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <School fontSize="small" color="action" />
+              {params.value}
+            </Box>
+          ),
+        };
+      
+      case 'parentForm':
+        return {
+          ...baseColumn,
+          renderCell: (params) => (
+            <Chip
+              label={params.value ? 'Complete' : 'Pending'}
+              color={params.value ? 'success' : 'default'}
+              variant="outlined"
+              size="small"
+            />
+          ),
+        };
+      
+      case 'careerExploration':
+      case 'collegeExploration':
+        return {
+          ...baseColumn,
+          renderCell: (params) => (
+            params.value ? (
+              <Chip
+                label={new Date(params.value).toLocaleDateString()}
+                color="info"
+                variant="outlined"
+                size="small"
+              />
+            ) : (
+              <span style={{ color: '#666' }}>Not completed</span>
+            )
+          ),
+        };
+      
+      case 'participationPoints':
+        return {
+          ...baseColumn,
+          renderCell: (params) => (
+            <Chip
+              label={params.value || 0}
+              color={params.value > 0 ? 'primary' : 'default'}
+              variant="filled"
+              size="small"
+            />
+          ),
+        };
+      
+      case 'dob':
+        return {
+          ...baseColumn,
+          renderCell: (params) => (
+            params.value ? new Date(params.value).toLocaleDateString() : '-'
+          ),
+        };
+      
+      default:
+        // For custom columns or simple text fields
+        if (columnSetting.type === 'boolean') {
+          return {
+            ...baseColumn,
+            renderCell: (params) => (
+              <Chip
+                label={params.value ? 'Yes' : 'No'}
+                color={params.value ? 'success' : 'default'}
+                variant="outlined"
+                size="small"
+              />
+            ),
+          };
+        } else if (columnSetting.type === 'date') {
+          return {
+            ...baseColumn,
+            renderCell: (params) => (
+              params.value ? new Date(params.value).toLocaleDateString() : '-'
+            ),
+          };
+        }
+        return baseColumn;
+    }
+  };
+
+  const columns: GridColDef[] = useMemo(() => {
+    // Get visible columns from settings
+    const visibleColumnSettings = settingsState.settings.dataDisplay.columnSettings.filter(col => col.visible);
+    
+    // Create columns based on settings
+    const dataColumns = visibleColumnSettings.map(createColumnFromSettings);
+    
+    // Always add actions column at the end
+    const actionsColumn: GridColDef = {
       field: 'actions',
       type: 'actions',
       headerName: 'Actions',
@@ -191,8 +211,10 @@ const StudentTable: React.FC = () => {
           onClick={() => handleDelete(params.row as Student)}
         />,
       ],
-    },
-  ], []);
+    };
+
+    return [...dataColumns, actionsColumn];
+  }, [settingsState.settings.dataDisplay.columnSettings]);
 
   const handleEdit = (student: Student) => {
     setSelectedStudent(student);
@@ -296,6 +318,10 @@ const StudentTable: React.FC = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Box>
+          {/* Table controls could go here if needed */}
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <ColumnVisibilityButton />
           <Button
             variant="contained"
             startIcon={<Add />}
@@ -312,7 +338,10 @@ const StudentTable: React.FC = () => {
           columns={columns}
           initialState={{
             pagination: {
-              paginationModel: { page: 0, pageSize: 25 },
+              paginationModel: { 
+                page: 0, 
+                pageSize: settingsState.settings.dataDisplay.recordsPerPage 
+              },
             },
           }}
           pageSizeOptions={[10, 25, 50, 100]}

@@ -27,6 +27,7 @@ import SearchAndFilter from './SearchAndFilter';
 import LoadingSpinner from './LoadingSpinner';
 import GoogleOAuthButton from './GoogleOAuthButton';
 import SignInSheetSection from './SignInSheetSection';
+import SettingsPage from './Settings/SettingsPage';
 import { colorTokens } from '../theme';
 
 const ModernStudentDashboard: React.FC = () => {
@@ -298,10 +299,13 @@ const ModernStudentDashboard: React.FC = () => {
           {currentPage === 'signins' && <SignInSheetSection />}
           {currentPage === 'settings' && (
             <Container maxWidth="xl" sx={{ py: 4 }}>
-              <Typography variant="h4">Settings</Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-                Configuration options coming soon...
-              </Typography>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <SettingsPage />
+              </motion.div>
             </Container>
           )}
         </AnimatePresence>
