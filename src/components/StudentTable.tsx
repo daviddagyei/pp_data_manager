@@ -160,6 +160,48 @@ const StudentTable: React.FC = () => {
       
       default:
         // For custom columns or simple text fields
+        if (columnSetting.isCustom) {
+          // Handle custom fields from student.customFields
+          return {
+            ...baseColumn,
+            renderCell: (params) => {
+              const customValue = params.row.customFields?.[columnSetting.field];
+              
+              if (columnSetting.type === 'boolean') {
+                return (
+                  <Chip
+                    label={customValue ? 'Yes' : 'No'}
+                    color={customValue ? 'success' : 'default'}
+                    variant="outlined"
+                    size="small"
+                  />
+                );
+              } else if (columnSetting.type === 'date') {
+                return customValue ? new Date(customValue).toLocaleDateString() : '-';
+              } else if (columnSetting.type === 'number') {
+                return customValue ? customValue.toString() : '-';
+              } else if (columnSetting.type === 'phone') {
+                return customValue ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Phone fontSize="small" color="action" />
+                    {customValue}
+                  </Box>
+                ) : '-';
+              } else if (columnSetting.type === 'email') {
+                return customValue ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Email fontSize="small" color="action" />
+                    {customValue}
+                  </Box>
+                ) : '-';
+              }
+              
+              return customValue || '-';
+            },
+          };
+        }
+        
+        // For built-in columns with simple rendering
         if (columnSetting.type === 'boolean') {
           return {
             ...baseColumn,

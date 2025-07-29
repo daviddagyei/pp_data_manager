@@ -88,6 +88,15 @@ export class DataTransformService {
         case 'places':
           student.places = this.parseNumber(value);
           break;
+        default:
+          // Handle custom fields - any unknown column becomes a custom field
+          if (value.trim()) {
+            if (!student.customFields) {
+              student.customFields = {};
+            }
+            student.customFields[header] = value.trim();
+          }
+          break;
       }
     });
 
@@ -95,7 +104,8 @@ export class DataTransformService {
       ...student,
       id: this.generateStudentId(index),
       rowIndex: index + 2, // +2 because sheets are 1-indexed and first row is headers
-      lastModified: new Date()
+      lastModified: new Date(),
+      customFields: student.customFields || {}
     } as Student;
   }
 
@@ -295,6 +305,28 @@ export class DataTransformService {
       isValid: Object.keys(errors).length === 0,
       errors
     };
+  }
+
+  /**
+   * Parse value based on expected type for custom fields
+   */
+  static parseValueByType(value: string, type: string): any {
+    if (!value.trim()) return null;
+
+    switch (type) {
+      case 'number':
+        return this.parseNumber(value);
+      case 'date':
+        return this.parseOptionalDate(value);
+      case 'boolean':
+        return this.parseBoolean(value);
+      case 'email':
+        return value.trim().toLowerCase();
+      case 'phone':
+        return this.formatPhoneNumber(value);
+      default:
+        return value.trim();
+    }
   }
 
   /**

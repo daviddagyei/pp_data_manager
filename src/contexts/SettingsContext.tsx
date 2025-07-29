@@ -9,8 +9,13 @@ export interface ColumnSettings {
   width: number;
   visible: boolean;
   editable: boolean;
-  type: 'string' | 'number' | 'date' | 'boolean';
+  type: 'string' | 'number' | 'date' | 'boolean' | 'email' | 'phone';
   isCustom: boolean;
+  required?: boolean;
+  maxLength?: number;
+  description?: string;
+  defaultValue?: any;
+  order?: number;
 }
 
 export interface DataDisplaySettings {
@@ -48,25 +53,27 @@ type SettingsAction =
   | { type: 'ADD_CUSTOM_COLUMN'; payload: ColumnSettings }
   | { type: 'REMOVE_CUSTOM_COLUMN'; payload: string }
   | { type: 'UPDATE_COLUMN_SETTINGS'; payload: ColumnSettings }
+  | { type: 'RENAME_COLUMN'; payload: { id: string; newName: string; newField?: string } }
+  | { type: 'REORDER_COLUMNS'; payload: ColumnSettings[] }
   | { type: 'SET_SETTINGS'; payload: AppSettings }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null };
 
 const defaultColumnSettings: ColumnSettings[] = [
-  { id: 'firstName', field: 'firstName', headerName: 'First Name', width: 120, visible: true, editable: false, type: 'string', isCustom: false },
-  { id: 'lastName', field: 'lastName', headerName: 'Last Name', width: 120, visible: true, editable: false, type: 'string', isCustom: false },
-  { id: 'email', field: 'email', headerName: 'Email', width: 200, visible: true, editable: false, type: 'string', isCustom: false },
-  { id: 'cellNumber', field: 'cellNumber', headerName: 'Cell Number', width: 130, visible: true, editable: false, type: 'string', isCustom: false },
-  { id: 'highSchool', field: 'highSchool', headerName: 'High School', width: 150, visible: true, editable: false, type: 'string', isCustom: false },
-  { id: 'graduationYear', field: 'graduationYear', headerName: 'Grad Year', width: 100, visible: true, editable: false, type: 'number', isCustom: false },
-  { id: 'parentForm', field: 'parentForm', headerName: 'Parent Form', width: 120, visible: false, editable: false, type: 'boolean', isCustom: false },
-  { id: 'careerExploration', field: 'careerExploration', headerName: 'Career Exploration', width: 150, visible: false, editable: false, type: 'date', isCustom: false },
-  { id: 'collegeExploration', field: 'collegeExploration', headerName: 'College Exploration', width: 160, visible: false, editable: false, type: 'date', isCustom: false },
-  { id: 'participationPoints', field: 'participationPoints', headerName: 'Points', width: 80, visible: false, editable: false, type: 'number', isCustom: false },
-  { id: 'dob', field: 'dob', headerName: 'Date of Birth', width: 120, visible: false, editable: false, type: 'date', isCustom: false },
-  { id: 'parentName', field: 'parentName', headerName: 'Parent Name', width: 130, visible: false, editable: false, type: 'string', isCustom: false },
-  { id: 'parentCell', field: 'parentCell', headerName: 'Parent Cell', width: 130, visible: false, editable: false, type: 'string', isCustom: false },
-  { id: 'parentEmail', field: 'parentEmail', headerName: 'Parent Email', width: 180, visible: false, editable: false, type: 'string', isCustom: false },
+  { id: 'firstName', field: 'firstName', headerName: 'First Name', width: 120, visible: true, editable: false, type: 'string', isCustom: false, required: true, order: 1 },
+  { id: 'lastName', field: 'lastName', headerName: 'Last Name', width: 120, visible: true, editable: false, type: 'string', isCustom: false, required: true, order: 2 },
+  { id: 'email', field: 'email', headerName: 'Email', width: 200, visible: true, editable: false, type: 'email', isCustom: false, required: true, order: 3 },
+  { id: 'cellNumber', field: 'cellNumber', headerName: 'Cell Number', width: 130, visible: true, editable: false, type: 'phone', isCustom: false, order: 4 },
+  { id: 'highSchool', field: 'highSchool', headerName: 'High School', width: 150, visible: true, editable: false, type: 'string', isCustom: false, required: true, order: 5 },
+  { id: 'graduationYear', field: 'graduationYear', headerName: 'Grad Year', width: 100, visible: true, editable: false, type: 'number', isCustom: false, required: true, order: 6 },
+  { id: 'parentForm', field: 'parentForm', headerName: 'Parent Form', width: 120, visible: false, editable: false, type: 'boolean', isCustom: false, order: 7 },
+  { id: 'careerExploration', field: 'careerExploration', headerName: 'Career Exploration', width: 150, visible: false, editable: false, type: 'date', isCustom: false, order: 8 },
+  { id: 'collegeExploration', field: 'collegeExploration', headerName: 'College Exploration', width: 160, visible: false, editable: false, type: 'date', isCustom: false, order: 9 },
+  { id: 'participationPoints', field: 'participationPoints', headerName: 'Points', width: 80, visible: false, editable: false, type: 'number', isCustom: false, order: 10 },
+  { id: 'dob', field: 'dob', headerName: 'Date of Birth', width: 120, visible: false, editable: false, type: 'date', isCustom: false, order: 11 },
+  { id: 'parentName', field: 'parentName', headerName: 'Parent Name', width: 130, visible: false, editable: false, type: 'string', isCustom: false, order: 12 },
+  { id: 'parentCell', field: 'parentCell', headerName: 'Parent Cell', width: 130, visible: false, editable: false, type: 'phone', isCustom: false, order: 13 },
+  { id: 'parentEmail', field: 'parentEmail', headerName: 'Parent Email', width: 180, visible: false, editable: false, type: 'email', isCustom: false, order: 14 },
 ];
 
 const defaultSettings: AppSettings = {
@@ -168,6 +175,40 @@ const settingsReducer = (state: SettingsState, action: SettingsAction): Settings
         },
       };
 
+    case 'RENAME_COLUMN':
+      const renamedColumns = state.settings.dataDisplay.columnSettings.map(col =>
+        col.id === action.payload.id 
+          ? { 
+              ...col, 
+              headerName: action.payload.newName,
+              field: action.payload.newField || col.field
+            } 
+          : col
+      );
+      
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          dataDisplay: {
+            ...state.settings.dataDisplay,
+            columnSettings: renamedColumns,
+          },
+        },
+      };
+
+    case 'REORDER_COLUMNS':
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          dataDisplay: {
+            ...state.settings.dataDisplay,
+            columnSettings: action.payload,
+          },
+        },
+      };
+
     case 'SET_SETTINGS':
       return {
         ...state,
@@ -198,6 +239,8 @@ interface SettingsContextType {
   addCustomColumn: (column: Omit<ColumnSettings, 'id' | 'isCustom'>) => void;
   removeCustomColumn: (columnId: string) => void;
   updateColumnSettings: (column: ColumnSettings) => void;
+  renameColumn: (id: string, newName: string, newField?: string) => void;
+  reorderColumns: (columns: ColumnSettings[]) => void;
   resetToDefaults: () => void;
 }
 
@@ -322,11 +365,13 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   const addCustomColumn = (column: Omit<ColumnSettings, 'id' | 'isCustom'>) => {
+    const maxOrder = Math.max(...state.settings.dataDisplay.columnSettings.map(col => col.order || 0));
     const newColumn: ColumnSettings = {
       ...column,
       id: `custom_${Date.now()}`,
       isCustom: true,
       visible: true,
+      order: maxOrder + 1,
     };
     dispatch({ type: 'ADD_CUSTOM_COLUMN', payload: newColumn });
   };
@@ -337,6 +382,18 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const updateColumnSettings = (column: ColumnSettings) => {
     dispatch({ type: 'UPDATE_COLUMN_SETTINGS', payload: column });
+  };
+
+  const renameColumn = (id: string, newName: string, newField?: string) => {
+    dispatch({ type: 'RENAME_COLUMN', payload: { id, newName, newField } });
+  };
+
+  const reorderColumns = (columns: ColumnSettings[]) => {
+    const reorderedColumns = columns.map((col, index) => ({
+      ...col,
+      order: index + 1,
+    }));
+    dispatch({ type: 'REORDER_COLUMNS', payload: reorderedColumns });
   };
 
   const resetToDefaults = () => {
@@ -350,6 +407,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     addCustomColumn,
     removeCustomColumn,
     updateColumnSettings,
+    renameColumn,
+    reorderColumns,
     resetToDefaults,
   };
 

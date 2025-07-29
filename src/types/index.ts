@@ -19,6 +19,7 @@ export interface Student {
   places?: number;
   rowIndex: number; // For API updates
   lastModified: Date; // For conflict detection
+  customFields: Record<string, any>; // Dynamic custom fields
 }
 
 export interface User {
