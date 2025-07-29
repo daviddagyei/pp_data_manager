@@ -19,12 +19,29 @@ export const convertToDataGridColumns = (
   const visibleColumns = columnSettings.filter(col => col.visible);
   
   const columns: GridColDef[] = visibleColumns.map(col => {
+    // Map custom types to DataGrid supported types
+    const getDataGridType = (type: string): GridColDef['type'] => {
+      switch (type) {
+        case 'number':
+          return 'number';
+        case 'date':
+          return 'date';
+        case 'boolean':
+          return 'boolean';
+        case 'string':
+        case 'email':
+        case 'phone':
+        default:
+          return undefined; // Default to string type
+      }
+    };
+
     const baseColumn: GridColDef = {
       field: col.field,
       headerName: col.headerName,
       width: col.width,
       editable: col.editable,
-      type: col.type === 'string' ? undefined : col.type,
+      type: getDataGridType(col.type),
     };
 
     // Add custom rendering based on field type
