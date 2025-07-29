@@ -16,9 +16,6 @@ import {
   Add,
   Edit,
   Delete,
-  Email,
-  Phone,
-  School
 } from '@mui/icons-material';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -64,8 +61,7 @@ const StudentTable: React.FC = () => {
         return {
           ...baseColumn,
           renderCell: (params) => (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Email fontSize="small" color="action" />
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
               {params.value}
             </Box>
           ),
@@ -76,14 +72,9 @@ const StudentTable: React.FC = () => {
         return {
           ...baseColumn,
           renderCell: (params) => (
-            params.value ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Phone fontSize="small" color="action" />
-                {params.value}
-              </Box>
-            ) : (
-              <span style={{ color: '#666' }}>-</span>
-            )
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+              {params.value || '-'}
+            </Box>
           ),
         };
       
@@ -91,8 +82,7 @@ const StudentTable: React.FC = () => {
         return {
           ...baseColumn,
           renderCell: (params) => (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <School fontSize="small" color="action" />
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
               {params.value}
             </Box>
           ),
@@ -101,8 +91,12 @@ const StudentTable: React.FC = () => {
       case 'graduationYear':
         return {
           ...baseColumn,
+          align: 'center',
+          headerAlign: 'center',
           renderCell: (params) => (
-            params.value ? params.value.toString() : '-'
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 36 }}>
+              {params.value ? params.value.toString() : '-'}
+            </Box>
           ),
         };
       
@@ -110,12 +104,14 @@ const StudentTable: React.FC = () => {
         return {
           ...baseColumn,
           renderCell: (params) => (
-            <Chip
-              label={params.value ? 'Complete' : 'Pending'}
-              color={params.value ? 'success' : 'default'}
-              variant="outlined"
-              size="small"
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+              <Chip
+                label={params.value ? 'Complete' : 'Pending'}
+                color={params.value ? 'success' : 'default'}
+                variant="outlined"
+                size="small"
+              />
+            </Box>
           ),
         };
       
@@ -124,16 +120,18 @@ const StudentTable: React.FC = () => {
         return {
           ...baseColumn,
           renderCell: (params) => (
-            params.value ? (
-              <Chip
-                label={new Date(params.value).toLocaleDateString()}
-                color="info"
-                variant="outlined"
-                size="small"
-              />
-            ) : (
-              <span style={{ color: '#666' }}>Not completed</span>
-            )
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+              {params.value ? (
+                <Chip
+                  label={new Date(params.value).toLocaleDateString()}
+                  color="info"
+                  variant="outlined"
+                  size="small"
+                />
+              ) : (
+                <span style={{ color: '#666' }}>Not completed</span>
+              )}
+            </Box>
           ),
         };
       
@@ -141,12 +139,14 @@ const StudentTable: React.FC = () => {
         return {
           ...baseColumn,
           renderCell: (params) => (
-            <Chip
-              label={params.value || 0}
-              color={params.value > 0 ? 'primary' : 'default'}
-              variant="filled"
-              size="small"
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+              <Chip
+                label={params.value || 0}
+                color={params.value > 0 ? 'primary' : 'default'}
+                variant="filled"
+                size="small"
+              />
+            </Box>
           ),
         };
       
@@ -154,7 +154,9 @@ const StudentTable: React.FC = () => {
         return {
           ...baseColumn,
           renderCell: (params) => (
-            params.value ? new Date(params.value).toLocaleDateString() : '-'
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+              {params.value ? new Date(params.value).toLocaleDateString() : '-'}
+            </Box>
           ),
         };
       
@@ -169,34 +171,46 @@ const StudentTable: React.FC = () => {
               
               if (columnSetting.type === 'boolean') {
                 return (
-                  <Chip
-                    label={customValue ? 'Yes' : 'No'}
-                    color={customValue ? 'success' : 'default'}
-                    variant="outlined"
-                    size="small"
-                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+                    <Chip
+                      label={customValue ? 'Yes' : 'No'}
+                      color={customValue ? 'success' : 'default'}
+                      variant="outlined"
+                      size="small"
+                    />
+                  </Box>
                 );
               } else if (columnSetting.type === 'date') {
-                return customValue ? new Date(customValue).toLocaleDateString() : '-';
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+                    {customValue ? new Date(customValue).toLocaleDateString() : '-'}
+                  </Box>
+                );
               } else if (columnSetting.type === 'number') {
-                return customValue ? customValue.toString() : '-';
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+                    {customValue ? customValue.toString() : '-'}
+                  </Box>
+                );
               } else if (columnSetting.type === 'phone') {
-                return customValue ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Phone fontSize="small" color="action" />
-                    {customValue}
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+                    {customValue || '-'}
                   </Box>
-                ) : '-';
+                );
               } else if (columnSetting.type === 'email') {
-                return customValue ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Email fontSize="small" color="action" />
-                    {customValue}
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+                    {customValue || '-'}
                   </Box>
-                ) : '-';
+                );
               }
               
-              return customValue || '-';
+              return (
+                <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+                  {customValue || '-'}
+                </Box>
+              );
             },
           };
         }
@@ -206,23 +220,36 @@ const StudentTable: React.FC = () => {
           return {
             ...baseColumn,
             renderCell: (params) => (
-              <Chip
-                label={params.value ? 'Yes' : 'No'}
-                color={params.value ? 'success' : 'default'}
-                variant="outlined"
-                size="small"
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+                <Chip
+                  label={params.value ? 'Yes' : 'No'}
+                  color={params.value ? 'success' : 'default'}
+                  variant="outlined"
+                  size="small"
+                />
+              </Box>
             ),
           };
         } else if (columnSetting.type === 'date') {
           return {
             ...baseColumn,
             renderCell: (params) => (
-              params.value ? new Date(params.value).toLocaleDateString() : '-'
+              <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+                {params.value ? new Date(params.value).toLocaleDateString() : '-'}
+              </Box>
             ),
           };
         }
-        return baseColumn;
+        
+        // For all other columns (including string fields like firstName, lastName), ensure consistent alignment
+        return {
+          ...baseColumn,
+          renderCell: (params) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 36 }}>
+              {params.value || '-'}
+            </Box>
+          ),
+        };
     }
   };
 
