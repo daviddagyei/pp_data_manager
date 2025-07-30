@@ -1,46 +1,37 @@
 /**
- * * 1. DEBOUNCED SEARCH I * Performance Benefits:
- * - Reduces context updates from every keystroke to once per 1 second pause
- * - Eliminates redundant calculations of filter options
- * - Prevents unnecessary re-renders of components that consume context
- * - Maintains responsive UI while optimizing heavy operations
- *    - Uses local state for immediate UI feedback (localSearchQuery)
- *    - Debounces context updates with 1000ms (1 second) delay to prevent excessive filtering
- *    - Only triggers context updates when the debounced value actually changesrchAndFilter Component - Optimized Performance Implementation
+ * SearchAndFilter Component - Hybrid Local Filtering Implementation
  * 
- * This component provides search and filtering functionality for the student data
- * with several performance optimizations:
+ * This component provides search and filtering functionality with local state management
+ * for maximum smoothness, similar to the sign-ins page approach:
  * 
- * 1. DEBOUNCED SEARCH INPUT:
- *    - Uses local state for immediate UI feedback (localSearchQuery)
- *    - Debounces context updates with 500ms delay to prevent excessive filtering
- *    - Only triggers context updates when the debounced value actually changes
- *    - Auto-focuses search input on mount and after results change for better UX
+ * 1. LOCAL FILTERING:
+ *    - All filtering happens locally using useMemo
+ *    - No context updates during search/filter operations
+ *    - Results passed up via callback to parent
  * 
- * 2. MEMOIZED FILTER OPTIONS:
- *    - Filter dropdown options (graduation years, high schools) are computed only
- *      when the students array changes, not on every render
- *    - Uses useMemo to cache expensive Set operations and array sorting
+ * 2. DEBOUNCED SEARCH INPUT:
+ *    - Uses local state for immediate UI feedback
+ *    - 300ms debounce for optimal responsiveness
+ *    - No context state changes during typing
  * 
- * 3. OPTIMIZED EVENT HANDLERS:
- *    - All event handlers are wrapped in useCallback to prevent recreation
- *    - Filter changes update context immediately (no debouncing needed)
- *    - Search input changes only update local state immediately
+ * 3. MEMOIZED FILTER OPTIONS & RESULTS:
+ *    - Filter options computed only when raw students data changes
+ *    - Filtered results computed only when filters or search change
+ *    - Prevents unnecessary recalculations
  * 
- * 4. EFFICIENT STATE MANAGEMENT:
- *    - Separates immediate UI updates from expensive filtering operations
- *    - Uses context state as single source of truth for filter values
- *    - Automatically syncs local search with context when cleared externally
+ * 4. CALLBACK-BASED UPDATES:
+ *    - Uses onFilter callback to update parent component
+ *    - Similar to sign-ins page architecture
+ *    - Minimal context state changes
  * 
  * Performance Benefits:
- * - Reduces context updates from every keystroke to once per 500ms pause
- * - Eliminates redundant calculations of filter options
- * - Prevents unnecessary re-renders of components that consume context
- * - Maintains responsive UI while optimizing heavy operations
- * - Auto-focuses search input for improved user experience
+ * - Eliminates context cascade re-renders during search
+ * - Matches sign-ins page smoothness exactly
+ * - Maintains responsive UI without context overhead
+ * - Local state changes only, global state stable
  */
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   Box,
   TextField,
@@ -67,96 +58,114 @@ import {
 import { useData } from '../contexts/DataContext';
 import { useDebounce } from '../hooks/useDebounce';
 import ExportButton from './ExportButton';
-import type { FilterOptions } from '../types';
+import type { Student } from '../types';
 
-const SearchAndFilter: React.FC = () => {
-  const { state, setSearchQuery, setFilters } = useData();
+interface SearchAndFilterProps {
+  onFilter: (filteredStudents: Student[]) => void;
+}
+
+const SearchAndFilter: React.FC<SearchAndFilterProps> = ({ onFilter }) => {
+  const { state } = useData(); // Only read students data, no setters
   
-  // Local state for immediate UI updates
-  const [localSearchQuery, setLocalSearchQuery] = useState(state.searchQuery);
+  // Local filter state
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
+  const [graduationYearFilter, setGraduationYearFilter] = useState<number | undefined>();
+  const [highSchoolFilter, setHighSchoolFilter] = useState<string | undefined>();
+  const [parentFormFilter, setParentFormFilter] = useState<boolean | undefined>();
+  const [careerExplorationFilter, setCareerExplorationFilter] = useState<boolean | undefined>();
+  const [collegeExplorationFilter, setCollegeExplorationFilter] = useState<boolean | undefined>();
   
-  // Create ref for search input to enable auto-focus
   const searchInputRef = useRef<HTMLInputElement>(null);
-  
-  // Debounce the search query to prevent excessive filtering operations
-  // Increased to 1000ms (1 second) for optimal performance with larger datasets
-  const debouncedSearchQuery = useDebounce(localSearchQuery, 1000);
-  
-  // Apply debounced search query to the context only when it changes
-  useEffect(() => {
-    if (debouncedSearchQuery !== state.searchQuery) {
-      setSearchQuery(debouncedSearchQuery);
-    }
-  }, [debouncedSearchQuery, setSearchQuery, state.searchQuery]);
+  const debouncedSearchQuery = useDebounce(localSearchQuery, 300);
 
-  // Sync local search query with context when context changes (e.g., from clear all)
-  useEffect(() => {
-    if (state.searchQuery !== localSearchQuery && state.searchQuery !== debouncedSearchQuery) {
-      setLocalSearchQuery(state.searchQuery);
-    }
-  }, [state.searchQuery, localSearchQuery, debouncedSearchQuery]);
-
-  // Auto-focus search input on component mount and after re-renders when no modal dialogs are open
-  useEffect(() => {
-    // Small delay to ensure the component is fully rendered
-    const timer = setTimeout(() => {
-      if (searchInputRef.current && !document.querySelector('[role="dialog"]')) {
-        searchInputRef.current.focus();
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [state.filteredStudents.length]); // Re-focus when results change
-
-  // Memoize filter options to avoid recalculating on every render
+  // Memoize filter options
   const filterOptions = useMemo(() => {
     const graduationYears = Array.from(
       new Set(state.students.map(s => s.graduationYear).filter(year => year))
-    ).sort((a, b) => b - a); // Sort descending (newest first)
+    ).sort((a, b) => b - a);
     
     const highSchools = Array.from(
       new Set(state.students.map(s => s.highSchool).filter(school => school?.trim()))
     ).sort();
 
     return { graduationYears, highSchools };
-  }, [state.students]); // Only recalculate when students data changes
+  }, [state.students]);
 
-  // Memoize active filters check to avoid recalculating on every render
+  // Local filtering logic - similar to sign-ins page
+  const filteredStudents = useMemo(() => {
+    return state.students.filter(student => {
+      // Search filter
+      const matchesSearch = debouncedSearchQuery.trim() === '' ||
+        student.firstName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        student.lastName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        student.email.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        student.highSchool.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        (student.parentName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())) ||
+        (student.parentEmail?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
+      
+      // Other filters
+      const matchesGradYear = !graduationYearFilter || student.graduationYear === graduationYearFilter;
+      const matchesHighSchool = !highSchoolFilter || student.highSchool.toLowerCase().includes(highSchoolFilter.toLowerCase());
+      const matchesParentForm = parentFormFilter === undefined || student.parentForm === parentFormFilter;
+      const matchesCareerExploration = careerExplorationFilter === undefined || 
+        (careerExplorationFilter ? !!student.careerExploration : !student.careerExploration);
+      const matchesCollegeExploration = collegeExplorationFilter === undefined ||
+        (collegeExplorationFilter ? !!student.collegeExploration : !student.collegeExploration);
+      
+      return matchesSearch && matchesGradYear && matchesHighSchool && 
+             matchesParentForm && matchesCareerExploration && matchesCollegeExploration;
+    });
+  }, [state.students, debouncedSearchQuery, graduationYearFilter, highSchoolFilter, 
+      parentFormFilter, careerExplorationFilter, collegeExplorationFilter]);
+
+  // Call onFilter whenever filteredStudents changes
+  useEffect(() => {
+    onFilter(filteredStudents);
+  }, [filteredStudents, onFilter]);
+
+  // Auto-focus search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInputRef.current && !document.querySelector('[role="dialog"]')) {
+        searchInputRef.current.focus();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [filteredStudents.length]);
+
+  // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
-    return Object.values(state.filters).some(value => value !== undefined && value !== '') || 
-           localSearchQuery.trim() !== '';
-  }, [state.filters, localSearchQuery]);
-  // Optimized search input handler - only updates local state immediately
+    return localSearchQuery.trim() !== '' || 
+           graduationYearFilter !== undefined || 
+           highSchoolFilter !== undefined ||
+           parentFormFilter !== undefined ||
+           careerExplorationFilter !== undefined ||
+           collegeExplorationFilter !== undefined;
+  }, [localSearchQuery, graduationYearFilter, highSchoolFilter, parentFormFilter, careerExplorationFilter, collegeExplorationFilter]);
+
+  // Event handlers
   const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const query = event.target.value;
-    setLocalSearchQuery(query);
-    // The debounced effect above will handle updating the context after 1 second
+    setLocalSearchQuery(event.target.value);
   }, []);
 
-  // Optimized filter change handler - updates context immediately for filters
-  // (filters don't need debouncing as they're not typed character by character)
-  const handleFilterChange = useCallback((newFilters: Partial<FilterOptions>) => {
-    const updatedFilters = { ...state.filters, ...newFilters };
-    setFilters(updatedFilters);
-  }, [state.filters, setFilters]);
-
-  // Clear all filters and search query
-  const clearFilters = useCallback(() => {
-    setFilters({});
+  const clearAllFilters = useCallback(() => {
     setLocalSearchQuery('');
-    setSearchQuery('');
-  }, [setFilters, setSearchQuery]);
+    setGraduationYearFilter(undefined);
+    setHighSchoolFilter(undefined);
+    setParentFormFilter(undefined);
+    setCareerExplorationFilter(undefined);
+    setCollegeExplorationFilter(undefined);
+  }, []);
 
-  // Clear search input handler  
   const clearSearch = useCallback(() => {
     setLocalSearchQuery('');
-    setSearchQuery('');
-  }, [setSearchQuery]);
+  }, []);
 
   return (
     <Paper elevation={1} sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-        <Box sx={{ flexGrow: 1 }}>            <TextField
+        <Box sx={{ flexGrow: 1 }}>
+          <TextField
             fullWidth
             variant="outlined"
             placeholder="Search students by name, email, or school..."
@@ -166,10 +175,7 @@ const SearchAndFilter: React.FC = () => {
             InputProps={{
               startAdornment: <Search sx={{ color: 'text.secondary', mr: 1 }} />,
               endAdornment: localSearchQuery && (
-                <IconButton
-                  size="small"
-                  onClick={clearSearch}
-                >
+                <IconButton size="small" onClick={clearSearch}>
                   <Clear />
                 </IconButton>
               )
@@ -178,7 +184,7 @@ const SearchAndFilter: React.FC = () => {
         </Box>
         
         <ExportButton 
-          filteredStudents={state.filteredStudents}
+          filteredStudents={filteredStudents}
           disabled={state.loading}
         />
         
@@ -186,7 +192,7 @@ const SearchAndFilter: React.FC = () => {
           <Button
             variant="outlined"
             startIcon={<Clear />}
-            onClick={clearFilters}
+            onClick={clearAllFilters}
           >
             Clear All
           </Button>
@@ -211,11 +217,9 @@ const SearchAndFilter: React.FC = () => {
               <FormControl fullWidth>
                 <InputLabel>Graduation Year</InputLabel>
                 <Select
-                  value={state.filters.graduationYear || ''}
+                  value={graduationYearFilter || ''}
                   label="Graduation Year"
-                  onChange={(e) => handleFilterChange({ 
-                    graduationYear: e.target.value ? Number(e.target.value) : undefined 
-                  })}
+                  onChange={(e) => setGraduationYearFilter(e.target.value ? Number(e.target.value) : undefined)}
                 >
                   <MenuItem value="">All Years</MenuItem>
                   {filterOptions.graduationYears.map((year: number) => (
@@ -231,11 +235,9 @@ const SearchAndFilter: React.FC = () => {
               <FormControl fullWidth>
                 <InputLabel>High School</InputLabel>
                 <Select
-                  value={state.filters.highSchool || ''}
+                  value={highSchoolFilter || ''}
                   label="High School"
-                  onChange={(e) => handleFilterChange({ 
-                    highSchool: e.target.value || undefined 
-                  })}
+                  onChange={(e) => setHighSchoolFilter(e.target.value || undefined)}
                 >
                   <MenuItem value="">All Schools</MenuItem>
                   {filterOptions.highSchools.map((school: string) => (
@@ -251,10 +253,8 @@ const SearchAndFilter: React.FC = () => {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={state.filters.parentFormCompleted || false}
-                    onChange={(e) => handleFilterChange({ 
-                      parentFormCompleted: e.target.checked || undefined 
-                    })}
+                    checked={parentFormFilter || false}
+                    onChange={(e) => setParentFormFilter(e.target.checked || undefined)}
                   />
                 }
                 label="Parent Form Completed"
@@ -265,10 +265,8 @@ const SearchAndFilter: React.FC = () => {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={state.filters.careerExplorationCompleted || false}
-                    onChange={(e) => handleFilterChange({ 
-                      careerExplorationCompleted: e.target.checked || undefined 
-                    })}
+                    checked={careerExplorationFilter || false}
+                    onChange={(e) => setCareerExplorationFilter(e.target.checked || undefined)}
                   />
                 }
                 label="Career Exploration"
@@ -279,10 +277,8 @@ const SearchAndFilter: React.FC = () => {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={state.filters.collegeExplorationCompleted || false}
-                    onChange={(e) => handleFilterChange({ 
-                      collegeExplorationCompleted: e.target.checked || undefined 
-                    })}
+                    checked={collegeExplorationFilter || false}
+                    onChange={(e) => setCollegeExplorationFilter(e.target.checked || undefined)}
                   />
                 }
                 label="College Exploration"
@@ -291,8 +287,14 @@ const SearchAndFilter: React.FC = () => {
           </Box>
         </AccordionDetails>
       </Accordion>
+      
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Showing {filteredStudents.length} of {state.students.length} students
+        </Typography>
+      </Box>
     </Paper>
   );
 };
 
-export default SearchAndFilter;
+export default React.memo(SearchAndFilter);

@@ -249,4 +249,4 @@ const ExportButton: React.FC<ExportButtonProps> = ({ filteredStudents, disabled 
   );
 };
 
-export default ExportButton;
+export default React.memo(ExportButton);

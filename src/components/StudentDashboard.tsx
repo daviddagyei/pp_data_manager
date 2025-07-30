@@ -13,8 +13,7 @@ import {
 import { Logout } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import { useData } from '../contexts/DataContext.tsx';
-import StudentTable from './StudentTable.tsx';
-import SearchAndFilter from './SearchAndFilter.tsx';
+import StudentManagement from './StudentManagement';
 import LoadingSpinner from './LoadingSpinner.tsx';
 import GoogleOAuthButton from './GoogleOAuthButton.tsx';
 import { AuthDebugInfo } from './AuthDebugInfo.tsx';
@@ -155,24 +154,9 @@ const StudentDashboard: React.FC = () => {
           </Alert>
         )}
 
-        {/* Search and Filter Controls */}
-        <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
-          <SearchAndFilter />
-        </Paper>
-
-        {/* Student Table */}
+        {/* Student Management */}
         <Paper elevation={1} sx={{ p: 2 }}>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="h6" component="h2">
-              Students ({dataState.filteredStudents.length})
-            </Typography>
-            {dataState.lastUpdated && (
-              <Typography variant="caption" color="text.secondary">
-                Last updated: {dataState.lastUpdated.toLocaleString()}
-              </Typography>
-            )}
-          </Box>
-          <StudentTable />
+          <StudentManagement />
         </Paper>
       </Container>
     </Box>

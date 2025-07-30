@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   DataGrid,
   GridActionsCellItem,
@@ -26,10 +26,17 @@ import StudentDetailsDialog from './StudentDetailsDialog';
 import ColumnVisibilityButton from './ColumnVisibilityButton';
 import type { Student } from '../types';
 
-const StudentTable: React.FC = () => {
+interface StudentTableProps {
+  filteredStudents?: Student[]; // Optional prop for local filtering mode
+}
+
+const StudentTable: React.FC<StudentTableProps> = ({ filteredStudents: propFilteredStudents }) => {
   const { state, addStudent, updateStudent, deleteStudent } = useData();
   const { state: authState } = useAuth();
   const { state: settingsState } = useSettings();
+  
+  // Use prop filteredStudents if provided, otherwise fall back to context
+  const filteredStudents = propFilteredStudents || state.filteredStudents;
   
   // Dialog states
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -293,19 +300,20 @@ const StudentTable: React.FC = () => {
     return [...dataColumns, actionsColumn];
   }, [settingsState.settings.dataDisplay.columnSettings]);
 
-  const handleEdit = (student: Student) => {
+  // Memoize event handlers to prevent unnecessary re-renders
+  const handleEdit = useCallback((student: Student) => {
     setSelectedStudent(student);
     setEditDialogOpen(true);
-  };
+  }, []);
 
-  const handleDelete = (student: Student) => {
+  const handleDelete = useCallback((student: Student) => {
     setSelectedStudent(student);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
-  const handleAddStudent = () => {
+  const handleAddStudent = useCallback(() => {
     setAddDialogOpen(true);
-  };
+  }, []);
 
   const handleAddSubmit = async (studentData: Omit<Student, 'id' | 'rowIndex' | 'lastModified'>) => {
     if (!authState.user?.accessToken) return;
@@ -385,11 +393,11 @@ const StudentTable: React.FC = () => {
   // Memoize the rows transformation to avoid recalculating on every render
   // Only recalculate when filteredStudents actually changes
   const rows = useMemo(() => {
-    return state.filteredStudents.map(student => ({
+    return filteredStudents.map(student => ({
       ...student,
       id: student.id, // DataGrid requires an 'id' field
     }));
-  }, [state.filteredStudents]);
+  }, [filteredStudents]);
 
   return (
     <Box>
@@ -488,4 +496,4 @@ const StudentTable: React.FC = () => {
   );
 };
 
-export default StudentTable;
+export default React.memo(StudentTable);

@@ -13,8 +13,7 @@ import {
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import StudentTable from './StudentTable';
-import SearchAndFilter from './SearchAndFilter';
+import StudentManagement from './StudentManagement';
 import LoadingSpinner from './LoadingSpinner';
 
 const StudentDashboard: React.FC = () => {
@@ -149,11 +148,7 @@ const StudentDashboard: React.FC = () => {
           </Alert>
         )}
 
-        <SearchAndFilter />
-
-        <Box sx={{ mt: 3 }}>
-          <StudentTable />
-        </Box>
+        <StudentManagement />
 
         {dataState.loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>

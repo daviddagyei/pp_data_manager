@@ -21,8 +21,7 @@ import Navigation from './Navigation';
 import DashboardCard from './DashboardCard';
 import DashboardLayout, { DashboardGridItem } from './DashboardLayout';
 import Footer from './Footer';
-import StudentTable from './StudentTable';
-import SearchAndFilter from './SearchAndFilter';
+import StudentManagement from './StudentManagement';
 import LoadingSpinner from './LoadingSpinner';
 import GoogleOAuthButton from './GoogleOAuthButton';
 import SignInSheetSection from './SignInSheetSection';
@@ -236,33 +235,10 @@ const ModernStudentDashboard: React.FC = () => {
         </motion.div>
       </DashboardGridItem>
 
-      {/* Search and Filters */}
+      {/* Student Management with Search/Filter */}
       <DashboardGridItem xs={12}>
         <DashboardCard title="Student Management" subtitle="Search, filter, and manage student records">
-          <SearchAndFilter />
-        </DashboardCard>
-      </DashboardGridItem>
-
-      {/* Student Table */}
-      <DashboardGridItem xs={12}>
-        <DashboardCard 
-          title="Student Records" 
-          subtitle={`${dataState.filteredStudents.length} students found`}
-          hoverable={false}
-        >
-          {dataState.error ? (
-            <Alert 
-              severity="error" 
-              sx={{ 
-                borderRadius: 2,
-                mb: 2,
-              }}
-            >
-              {dataState.error}
-            </Alert>
-          ) : (
-            <StudentTable />
-          )}
+          <StudentManagement />
         </DashboardCard>
       </DashboardGridItem>
     </DashboardLayout>
