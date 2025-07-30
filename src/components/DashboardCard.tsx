@@ -6,7 +6,6 @@ import {
   CardActions,
   Typography,
   Box,
-  IconButton,
   Skeleton,
   useTheme,
 } from '@mui/material';
