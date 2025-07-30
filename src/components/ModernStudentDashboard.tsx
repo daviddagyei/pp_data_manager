@@ -22,6 +22,8 @@ import DashboardCard from './DashboardCard';
 import DashboardLayout, { DashboardGridItem } from './DashboardLayout';
 import Footer from './Footer';
 import StudentManagement from './StudentManagement';
+import GraduationYearChart from './GraduationYearChart';
+import HighSchoolChart from './HighSchoolChart';
 import LoadingSpinner from './LoadingSpinner';
 import GoogleOAuthButton from './GoogleOAuthButton';
 import SignInSheetSection from './SignInSheetSection';
@@ -235,9 +237,71 @@ const ModernStudentDashboard: React.FC = () => {
         </motion.div>
       </DashboardGridItem>
 
+      {/* Analytics Section */}
+      <DashboardGridItem xs={12} md={6}>
+        <DashboardCard title="Graduation Year Distribution" subtitle="Student count by graduation year">
+          <GraduationYearChart />
+        </DashboardCard>
+      </DashboardGridItem>
+
+      <DashboardGridItem xs={12} md={6}>
+        <DashboardCard title="High School Distribution" subtitle="Student distribution across schools">
+          <HighSchoolChart />
+        </DashboardCard>
+      </DashboardGridItem>
+
       {/* Student Management with Search/Filter */}
       <DashboardGridItem xs={12}>
         <DashboardCard title="Student Management" subtitle="Search, filter, and manage student records">
+          <StudentManagement />
+        </DashboardCard>
+      </DashboardGridItem>
+    </DashboardLayout>
+  );
+
+  // Students Tab Content (without charts)
+  const StudentsContent = () => (
+    <DashboardLayout>
+      {/* Header Section */}
+      <DashboardGridItem xs={12}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Box sx={{ mb: 4 }}>
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                fontWeight: 700,
+                mb: 1,
+                background: `linear-gradient(135deg, ${colorTokens.primary[600]}, ${colorTokens.secondary[600]})`,
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Student Management
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Search, filter, and manage your student records.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Chip
+                label={`${totalStudents} Total Students`}
+                color="primary"
+                variant="outlined"
+                sx={{ borderRadius: 2 }}
+              />
+            </Box>
+          </Box>
+        </motion.div>
+      </DashboardGridItem>
+
+      {/* Student Management Interface */}
+      <DashboardGridItem xs={12}>
+        <DashboardCard title="Student Records" subtitle="Search, filter, and manage student information">
           <StudentManagement />
         </DashboardCard>
       </DashboardGridItem>
@@ -259,7 +323,7 @@ const ModernStudentDashboard: React.FC = () => {
       <Box component="main" sx={{ flex: 1 }}>
         <AnimatePresence mode="wait">
           {currentPage === 'dashboard' && <DashboardContent />}
-          {currentPage === 'students' && <DashboardContent />}
+          {currentPage === 'students' && <StudentsContent />}
           {currentPage === 'signins' && <SignInSheetSection />}
           {currentPage === 'settings' && (
             <Container maxWidth="xl" sx={{ py: 4 }}>

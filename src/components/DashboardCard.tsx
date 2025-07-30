@@ -10,7 +10,6 @@ import {
   Skeleton,
   useTheme,
 } from '@mui/material';
-import { MoreVert } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 interface DashboardCardProps {
@@ -97,13 +96,7 @@ export default function DashboardCard({
       >
         <CardHeader
           avatar={icon}
-          action={
-            headerAction || (
-              <IconButton size="small" sx={{ opacity: 0.7 }}>
-                <MoreVert />
-              </IconButton>
-            )
-          }
+          action={headerAction}
           title={
             loading ? (
               <Skeleton variant="text" width="60%" height={28} />
