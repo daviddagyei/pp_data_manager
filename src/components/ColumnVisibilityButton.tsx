@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   IconButton,
   Popover,
@@ -26,6 +26,10 @@ const ColumnVisibilityButton: React.FC<ColumnVisibilityButtonProps> = ({ onOpenS
   const { state, toggleColumnVisibility } = useSettings();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
+  const handleToggleVisibility = useCallback((columnId: string) => {
+    toggleColumnVisibility(columnId);
+  }, [toggleColumnVisibility]);
+
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -37,8 +41,10 @@ const ColumnVisibilityButton: React.FC<ColumnVisibilityButtonProps> = ({ onOpenS
   const open = Boolean(anchorEl);
   const id = open ? 'column-visibility-popover' : undefined;
 
-  const visibleCount = state.settings.dataDisplay.columnSettings.filter(col => col.visible).length;
-  const totalCount = state.settings.dataDisplay.columnSettings.length;
+  const { visibleCount, totalCount } = useMemo(() => ({
+    visibleCount: state.settings.dataDisplay.columnSettings.filter(col => col.visible).length,
+    totalCount: state.settings.dataDisplay.columnSettings.length
+  }), [state.settings.dataDisplay.columnSettings]);
 
   return (
     <>
@@ -98,7 +104,7 @@ const ColumnVisibilityButton: React.FC<ColumnVisibilityButtonProps> = ({ onOpenS
               control={
                 <Switch
                   checked={column.visible}
-                  onChange={() => toggleColumnVisibility(column.id)}
+                  onChange={() => handleToggleVisibility(column.id)}
                   size="small"
                 />
               }
@@ -160,4 +166,4 @@ const ColumnVisibilityButton: React.FC<ColumnVisibilityButtonProps> = ({ onOpenS
   );
 };
 
-export default ColumnVisibilityButton;
+export default React.memo(ColumnVisibilityButton);

@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { useSettings } from '../contexts/SettingsContext';
 import Navigation from './Navigation';
 import DashboardCard from './DashboardCard';
 import DashboardLayout, { DashboardGridItem } from './DashboardLayout';
@@ -29,11 +30,13 @@ import GoogleOAuthButton from './GoogleOAuthButton';
 import SignInSheetSection from './SignInSheetSection';
 import SettingsPage from './Settings/SettingsPage';
 import { colorTokens } from '../theme';
+import { columnSyncService } from '../services/ColumnSyncService';
 
 const ModernStudentDashboard: React.FC = () => {
   const theme = useTheme();
   const { state: authState, logout } = useAuth();
   const { state: dataState, fetchStudents } = useData();
+  const { state: settingsState, syncDiscoveredCustomColumns, cleanupDuplicateColumns } = useSettings();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -52,8 +55,26 @@ const ModernStudentDashboard: React.FC = () => {
   // Load data when user is authenticated
   useEffect(() => {
     if (authState.isAuthenticated && authState.user?.accessToken && !initialLoadComplete) {
-      fetchStudents(authState.user.accessToken)
-        .then(() => {
+      const accessToken = authState.user.accessToken;
+      
+      fetchStudents(accessToken)
+        .then(async () => {
+          // First clean up any duplicate columns
+          cleanupDuplicateColumns();
+          
+          // Small delay to let the cleanup take effect
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // After fetching students, sync any new custom columns
+          try {
+            await columnSyncService.syncCustomColumnsWithSettings(
+              accessToken,
+              settingsState.settings.dataDisplay.columnSettings,
+              syncDiscoveredCustomColumns
+            );
+          } catch (error) {
+            console.error('❌ Failed to sync custom columns:', error);
+          }
           setInitialLoadComplete(true);
         })
         .catch((error: Error) => {

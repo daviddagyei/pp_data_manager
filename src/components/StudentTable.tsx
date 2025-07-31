@@ -264,8 +264,44 @@ const StudentTable: React.FC<StudentTableProps> = ({ filteredStudents: propFilte
     // Get visible columns from settings
     const visibleColumnSettings = settingsState.settings.dataDisplay.columnSettings.filter(col => col.visible);
     
+    console.log('🔍 StudentTable: Processing', visibleColumnSettings.length, 'visible columns');
+    console.log('🔍 Column fields:', visibleColumnSettings.map(col => `${col.headerName} (${col.field})`));
+    
+    // Check for duplicates in the visible columns
+    const fieldCounts = visibleColumnSettings.reduce((counts, col) => {
+      counts[col.field] = (counts[col.field] || 0) + 1;
+      return counts;
+    }, {} as Record<string, number>);
+    
+    const duplicateFields = Object.entries(fieldCounts).filter(([, count]) => count > 1);
+    if (duplicateFields.length > 0) {
+      console.warn('⚠️ Found duplicate fields in column settings:', duplicateFields);
+    }
+    
     // Create columns based on settings
     const dataColumns = visibleColumnSettings.map(createColumnFromSettings);
+    
+    // Validate unique field names for DataGrid (React keys)
+    const seenFields = new Set<string>();
+    const validatedColumns: GridColDef[] = [];
+    
+    dataColumns.forEach((column) => {
+      let uniqueField = column.field;
+      let counter = 1;
+      
+      // Ensure unique field name
+      while (seenFields.has(uniqueField)) {
+        uniqueField = `${column.field}_${counter}`;
+        counter++;
+        console.warn(`⚠️ Duplicate field detected: "${column.field}", using "${uniqueField}" instead`);
+      }
+      
+      seenFields.add(uniqueField);
+      validatedColumns.push({
+        ...column,
+        field: uniqueField
+      });
+    });
     
     // Always add actions column at the end
     const actionsColumn: GridColDef = {
@@ -297,7 +333,7 @@ const StudentTable: React.FC<StudentTableProps> = ({ filteredStudents: propFilte
       ],
     };
 
-    return [...dataColumns, actionsColumn];
+    return [...validatedColumns, actionsColumn];
   }, [settingsState.settings.dataDisplay.columnSettings]);
 
   // Memoize event handlers to prevent unnecessary re-renders

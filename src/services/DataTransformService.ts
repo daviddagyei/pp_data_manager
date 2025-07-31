@@ -453,4 +453,46 @@ export class DataTransformService {
   static sanitizePhoneNumber(phone: string): string {
     return this.formatPhoneNumber(phone);
   }
+
+  /**
+   * Detect custom columns from Google Sheets headers that don't match known fields
+   */
+  static detectCustomColumns(headers: string[]): Array<{id: string, headerName: string, field: string}> {
+    const knownHeaders = new Set([
+      'lastname', 'firstname', 'email', 'cellnumber', 'cellnumberxxxxx', 'cellnumberxxxxxxxxx',
+      'phone', 'phonenumber', 'cellphone', 'cell', 'mobile', 'mobilenumber', 'parentsname', 
+      'parentname', 'parentscell', 'parentcell', 'parentsemail', 'parentemail', 'highschool',
+      'graduationyear', 'dob', 'parentform', 'careerexploration', 'collegeexploration',
+      'collegeenrolledfall2025', 'collegeenrolled', 'participationpoints', 'spreadsheetsubmitted', 'places'
+    ]);
+
+    const customColumns: Array<{id: string, headerName: string, field: string}> = [];
+    const seenFields = new Set<string>(); // Track field names to prevent duplicates
+
+    headers.forEach((header) => {
+      const normalizedHeader = this.normalizeHeader(header);
+      if (!knownHeaders.has(normalizedHeader) && header.trim()) {
+        const fieldName = this.generateFieldName(header);
+        
+        // Ensure unique field names to prevent React key conflicts
+        let uniqueFieldName = fieldName;
+        let counter = 1;
+        while (seenFields.has(uniqueFieldName)) {
+          uniqueFieldName = `${fieldName}_${counter}`;
+          counter++;
+        }
+        seenFields.add(uniqueFieldName);
+        
+        customColumns.push({
+          id: `custom_${uniqueFieldName}`,
+          headerName: header.trim(),
+          field: uniqueFieldName
+        });
+        
+        console.log(`🔧 Created custom column: "${header}" -> field: "${uniqueFieldName}", id: "custom_${uniqueFieldName}"`);
+      }
+    });
+
+    return customColumns;
+  }
 }

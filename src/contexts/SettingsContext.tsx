@@ -52,6 +52,7 @@ type SettingsAction =
   | { type: 'SET_RECORDS_PER_PAGE'; payload: number }
   | { type: 'TOGGLE_COLUMN_VISIBILITY'; payload: string }
   | { type: 'ADD_CUSTOM_COLUMN'; payload: ColumnSettings }
+  | { type: 'ADD_CUSTOM_COLUMNS_BATCH'; payload: ColumnSettings[] }
   | { type: 'REMOVE_CUSTOM_COLUMN'; payload: string }
   | { type: 'UPDATE_COLUMN_SETTINGS'; payload: ColumnSettings }
   | { type: 'RENAME_COLUMN'; payload: { id: string; newName: string; newField?: string } }
@@ -143,6 +144,60 @@ const settingsReducer = (state: SettingsState, action: SettingsAction): Settings
           },
         },
       };
+
+    case 'ADD_CUSTOM_COLUMNS_BATCH':
+      // Filter out columns that already exist to prevent duplicates
+      const existingSettings = state.settings.dataDisplay.columnSettings;
+      const existingIds = new Set(existingSettings.map(col => col.id));
+      const existingFields = new Set(existingSettings.map(col => col.field));
+      const existingHeaders = new Set(existingSettings.map(col => col.headerName.toLowerCase()));
+      
+      const filteredNewColumns = action.payload.filter(newCol => {
+        const isDuplicate = existingIds.has(newCol.id) || 
+                           existingFields.has(newCol.field) || 
+                           existingHeaders.has(newCol.headerName.toLowerCase());
+        
+        if (isDuplicate) {
+          console.warn(`🚫 Preventing duplicate column addition: "${newCol.headerName}" (${newCol.field})`);
+          return false;
+        }
+        return true;
+      });
+      
+      if (filteredNewColumns.length === 0) {
+        console.log('🚫 All columns in batch already exist, no changes made');
+        return state; // No changes needed
+      }
+      
+      const filteredNewColumnIds = filteredNewColumns.map(col => col.id);
+      const updatedState = {
+        ...state,
+        settings: {
+          ...state.settings,
+          dataDisplay: {
+            ...state.settings.dataDisplay,
+            columnSettings: [...existingSettings, ...filteredNewColumns],
+            visibleColumns: [...state.settings.dataDisplay.visibleColumns, ...filteredNewColumnIds],
+          },
+        },
+      };
+      
+      // Debug: Check for duplicates after batch add (this should now be clean)
+      const allColumns = updatedState.settings.dataDisplay.columnSettings;
+      const fieldCounts = allColumns.reduce((counts, col) => {
+        counts[col.field] = (counts[col.field] || 0) + 1;
+        return counts;
+      }, {} as Record<string, number>);
+      
+      const duplicateFields = Object.entries(fieldCounts).filter(([, count]) => count > 1);
+      if (duplicateFields.length > 0) {
+        console.error('❌ CRITICAL: Duplicate fields still detected after filtering:', duplicateFields);
+        console.error('❌ All columns after batch add:', allColumns.map(col => `${col.headerName} (${col.field})`));
+      } else {
+        console.log(`✅ Successfully added ${filteredNewColumns.length} unique columns`);
+      }
+      
+      return updatedState;
 
     case 'REMOVE_CUSTOM_COLUMN':
       const filteredColumns = state.settings.dataDisplay.columnSettings.filter(col => col.id !== action.payload);
@@ -244,6 +299,8 @@ interface SettingsContextType {
   reorderColumns: (columns: ColumnSettings[]) => void;
   resetToDefaults: () => void;
   syncWithGoogleSheets: () => Promise<void>;
+  syncDiscoveredCustomColumns: (discoveredColumns: Array<{id: string, headerName: string, field: string}>) => void;
+  cleanupDuplicateColumns: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -491,6 +548,103 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
 
+  const syncDiscoveredCustomColumns = (discoveredColumns: Array<{id: string, headerName: string, field: string}>) => {
+    if (discoveredColumns.length === 0) {
+      return;
+    }
+
+    console.log('🔄 syncDiscoveredCustomColumns called with:', discoveredColumns.map(col => `${col.headerName} (${col.field})`));
+
+    // Get current column settings
+    const currentSettings = state.settings.dataDisplay.columnSettings;
+    console.log('🔄 Current settings before sync:', currentSettings.map(col => `${col.headerName} (${col.field})`));
+    
+    const existingIds = new Set(currentSettings.map(col => col.id));
+    const existingHeaderNames = new Set(currentSettings.map(col => col.headerName.toLowerCase()));
+    const existingFields = new Set(currentSettings.map(col => col.field));
+    const newColumns: ColumnSettings[] = [];
+
+    discoveredColumns.forEach(({ id, headerName, field }) => {
+      // Check for ALL types of collisions: ID, headerName, and field
+      const idExists = existingIds.has(id);
+      const headerExists = existingHeaderNames.has(headerName.toLowerCase());
+      const fieldExists = existingFields.has(field);
+      
+      console.log(`🔍 Checking column "${headerName}": idExists=${idExists}, headerExists=${headerExists}, fieldExists=${fieldExists}`);
+      
+      if (!idExists && !headerExists && !fieldExists) {
+        const maxOrder = Math.max(...currentSettings.map(col => col.order || 0));
+        const newColumn: ColumnSettings = {
+          id,
+          field,
+          headerName,
+          type: 'string',
+          width: 150,
+          visible: true,
+          editable: true,
+          isCustom: true,
+          order: maxOrder + newColumns.length + 1
+        };
+        newColumns.push(newColumn);
+        
+        // Add to our tracking sets to prevent duplicates within this batch
+        existingIds.add(id);
+        existingHeaderNames.add(headerName.toLowerCase());
+        existingFields.add(field);
+        
+        console.log(`✅ Will add new column: "${headerName}" (${field})`);
+      } else {
+        console.log(`⏭️ Column "${headerName}" already exists (ID: ${idExists}, Header: ${headerExists}, Field: ${fieldExists}), skipping`);
+      }
+    });
+
+    // Add all new columns at once using a single batch dispatch
+    if (newColumns.length > 0) {
+      console.log(`🚀 Auto-adding ${newColumns.length} new custom columns:`, newColumns.map(col => col.headerName));
+      
+      // Use a single batch action instead of multiple dispatches
+      dispatch({ type: 'ADD_CUSTOM_COLUMNS_BATCH', payload: newColumns });
+    } else {
+      console.log('✨ All discovered columns already exist in settings');
+    }
+  };
+
+  /**
+   * Clean up duplicate columns in settings
+   */
+  const cleanupDuplicateColumns = () => {
+    const columns = state.settings.dataDisplay.columnSettings;
+    console.log('🧹 Starting cleanup with', columns.length, 'columns');
+    console.log('🧹 Current columns:', columns.map(col => `${col.id} (${col.headerName} -> ${col.field})`));
+    
+    const seen = new Map<string, typeof columns[0]>();
+    const duplicatesToRemove: string[] = [];
+    
+    for (const column of columns) {
+      const key = `${column.field.toLowerCase()}_${column.headerName.toLowerCase()}`;
+      
+      if (!seen.has(key)) {
+        seen.set(key, column);
+      } else {
+        const existing = seen.get(key)!;
+        console.log(`🧹 Found duplicate column: ${column.id} (${column.headerName}) - keeping ${existing.id} (${existing.headerName})`);
+        duplicatesToRemove.push(column.id);
+      }
+    }
+    
+    // Remove duplicates
+    duplicatesToRemove.forEach(columnId => {
+      console.log(`🧹 Removing duplicate column: ${columnId}`);
+      dispatch({ type: 'REMOVE_CUSTOM_COLUMN', payload: columnId });
+    });
+    
+    if (duplicatesToRemove.length > 0) {
+      console.log(`🧹 Cleaned up ${duplicatesToRemove.length} duplicate columns`);
+    } else {
+      console.log('🧹 No duplicates found');
+    }
+  };
+
   const value: SettingsContextType = {
     state,
     setRecordsPerPage,
@@ -502,6 +656,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     reorderColumns,
     resetToDefaults,
     syncWithGoogleSheets,
+    syncDiscoveredCustomColumns,
+    cleanupDuplicateColumns,
   };
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
