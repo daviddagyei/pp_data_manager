@@ -6,6 +6,7 @@ import { useSignInSheet } from '../contexts/SignInSheetContext';
 import { useAuth } from '../contexts/AuthContext';
 import SignInSheetSearchAndFilter from './SignInSheetSearchAndFilter';
 import SignInDetailsDialog from './SignInDetailsDialog';
+import SignInExportButton from './SignInExportButton';
 import type { SignInRow } from '../types/signIn';
 
 
@@ -69,9 +70,15 @@ const SignInSheetTable: React.FC = () => {
 
   return (
     <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Sign-In Sheet
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">
+          Sign-In Sheet
+        </Typography>
+        <SignInExportButton 
+          filteredSignIns={filteredRows}
+          disabled={loading}
+        />
+      </Box>
       <SignInSheetSearchAndFilter
         signIns={signIns}
         onFilter={setFilteredRows}
