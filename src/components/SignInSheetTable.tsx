@@ -5,6 +5,8 @@ import { Box, Typography, Paper, CircularProgress, Alert, Chip } from '@mui/mate
 import { useSignInSheet } from '../contexts/SignInSheetContext';
 import { useAuth } from '../contexts/AuthContext';
 import SignInSheetSearchAndFilter from './SignInSheetSearchAndFilter';
+import SignInDetailsDialog from './SignInDetailsDialog';
+import type { SignInRow } from '../types/signIn';
 
 
 const columns: GridColDef[] = [
@@ -19,19 +21,12 @@ const columns: GridColDef[] = [
     },
   },
   { field: 'gradYear', headerName: 'Grad Year', width: 110 },
-  { field: 'email', headerName: 'Email', width: 220,
-    renderCell: (params) => (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Chip label={params.value} color="info" variant="outlined" size="small" />
-      </Box>
-    ),
-  },
+  { field: 'email', headerName: 'Email', width: 220 },
   { field: 'date', headerName: 'Date', width: 110,
     renderCell: (params) => {
       const value = params.value;
       if (!value) return <span style={{ color: '#666' }}>-</span>;
-      // All dates are MM/YYYY, so just display as chip
-      return <Chip label={value} color="primary" size="small" />;
+      return <span>{value}</span>;
     },
   },
   { field: 'event', headerName: 'Event', width: 150,
@@ -48,6 +43,18 @@ const SignInSheetTable: React.FC = () => {
   const { signIns, loading, error, fetchSignIns } = useSignInSheet();
   const { state: authState } = useAuth();
   const [filteredRows, setFilteredRows] = useState<any[]>(signIns);
+  const [selectedSignIn, setSelectedSignIn] = useState<SignInRow | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const handleRowClick = (params: any) => {
+    setSelectedSignIn(params.row);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSelectedSignIn(null);
+  };
 
   useEffect(() => {
     if (authState.isAuthenticated && authState.user?.accessToken) {
@@ -80,9 +87,24 @@ const SignInSheetTable: React.FC = () => {
             columns={columns}
             pageSizeOptions={[5, 10, 25]}
             initialState={{ pagination: { paginationModel: { page: 0, pageSize: 10 } } }}
+            onRowClick={handleRowClick}
+            sx={{
+              '& .MuiDataGrid-row': {
+                cursor: 'pointer',
+                '&:hover': {
+                  backgroundColor: 'action.hover',
+                },
+              },
+            }}
           />
         )}
       </Box>
+      
+      <SignInDetailsDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        signIn={selectedSignIn}
+      />
     </Paper>
   );
 };
