@@ -259,16 +259,35 @@ const ModernStudentDashboard: React.FC = () => {
       </DashboardGridItem>
 
       {/* Analytics Section */}
-      <DashboardGridItem xs={12} md={6}>
-        <DashboardCard title="Graduation Year Distribution" subtitle="Student count by graduation year">
-          <GraduationYearChart />
-        </DashboardCard>
-      </DashboardGridItem>
-
-      <DashboardGridItem xs={12} md={6}>
-        <DashboardCard title="High School Distribution" subtitle="Student distribution across schools">
-          <HighSchoolChart />
-        </DashboardCard>
+      <DashboardGridItem xs={12}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              md: 'repeat(auto-fit, minmax(450px, 1fr))',
+            },
+            gap: { xs: 2, md: 3 },
+            width: '100%',
+            justifyItems: 'center',
+            '& > *': {
+              width: '100%',
+              maxWidth: {
+                xs: '100%',
+                sm: '600px',
+                md: 'none',
+              },
+            },
+          }}
+        >
+          <DashboardCard title="Graduation Year Distribution" subtitle="Student count by graduation year">
+            <GraduationYearChart bare />
+          </DashboardCard>
+          
+          <DashboardCard title="High School Distribution" subtitle="Student distribution across schools">
+            <HighSchoolChart bare />
+          </DashboardCard>
+        </Box>
       </DashboardGridItem>
 
       {/* Student Management with Search/Filter */}

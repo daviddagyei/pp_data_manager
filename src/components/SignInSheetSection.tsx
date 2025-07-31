@@ -1,16 +1,16 @@
 import React from 'react';
 import SignInSheetTable from './SignInSheetTable';
-import { Box, Typography } from '@mui/material';
+import { Box } from '@mui/material';
 import { SignInSheetProvider } from '../contexts/SignInSheetContext';
+import DashboardCard from './DashboardCard';
 
 const SignInSheetSection: React.FC = () => {
   return (
     <SignInSheetProvider>
       <Box sx={{ mt: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          Event Sign-In Data
-        </Typography>
-        <SignInSheetTable />
+        <DashboardCard title="Event Sign-In Data" subtitle="Search, filter, and manage event sign-in records">
+          <SignInSheetTable />
+        </DashboardCard>
       </Box>
     </SignInSheetProvider>
   );

@@ -12,7 +12,11 @@ import {
 } from 'recharts';
 import { useData } from '../contexts/DataContext';
 
-const GraduationYearChart: React.FC = () => {
+interface GraduationYearChartProps {
+  bare?: boolean; // If true, renders without Paper wrapper and titles
+}
+
+const GraduationYearChart: React.FC<GraduationYearChartProps> = ({ bare = false }) => {
   const { state } = useData();
 
   // Process data for the chart
@@ -38,28 +42,40 @@ const GraduationYearChart: React.FC = () => {
   const colors = ['#1976d2', '#2196f3', '#42a5f5', '#64b5f6', '#90caf9', '#bbdefb'];
 
   if (chartData.length === 0) {
-    return (
-      <Paper elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom>
-          Graduation Year Distribution
-        </Typography>
+    const content = (
+      <Box sx={{ textAlign: 'center', py: bare ? 4 : 0 }}>
+        {!bare && (
+          <Typography variant="h6" gutterBottom>
+            Graduation Year Distribution
+          </Typography>
+        )}
         <Typography variant="body2" color="text.secondary">
           No graduation year data available
         </Typography>
+      </Box>
+    );
+
+    return bare ? content : (
+      <Paper elevation={2} sx={{ p: 3 }}>
+        {content}
       </Paper>
     );
   }
 
-  return (
-    <Paper elevation={2} sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-        Graduation Year Distribution
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Student count by graduation year
-      </Typography>
+  const chartContent = (
+    <>
+      {!bare && (
+        <>
+          <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+            Graduation Year Distribution
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Student count by graduation year
+          </Typography>
+        </>
+      )}
       
-      <Box sx={{ width: '100%', height: 300 }}>
+      <Box sx={{ width: '100%', height: bare ? 350 : 300 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
@@ -108,6 +124,12 @@ const GraduationYearChart: React.FC = () => {
           {chartData.length} graduation year{chartData.length !== 1 ? 's' : ''}
         </Typography>
       </Box>
+    </>
+  );
+
+  return bare ? chartContent : (
+    <Paper elevation={2} sx={{ p: 3 }}>
+      {chartContent}
     </Paper>
   );
 };

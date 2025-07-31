@@ -1,7 +1,7 @@
 import React, { useEffect, useState} from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
-import { Box, Typography, Paper, CircularProgress, Alert, Chip } from '@mui/material';
+import { Box, CircularProgress, Alert, Chip } from '@mui/material';
 import { useSignInSheet } from '../contexts/SignInSheetContext';
 import { useAuth } from '../contexts/AuthContext';
 import SignInSheetSearchAndFilter from './SignInSheetSearchAndFilter';
@@ -69,11 +69,8 @@ const SignInSheetTable: React.FC = () => {
   }, [signIns]);
 
   return (
-    <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">
-          Sign-In Sheet
-        </Typography>
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2 }}>
         <SignInExportButton 
           filteredSignIns={filteredRows}
           disabled={loading}
@@ -83,7 +80,7 @@ const SignInSheetTable: React.FC = () => {
         signIns={signIns}
         onFilter={setFilteredRows}
       />
-      <Box sx={{ height: 500, width: '100%' }}>
+      <Box sx={{ height: 500, width: '100%', mt: 2 }}>
         {loading ? (
           <CircularProgress />
         ) : error ? (
@@ -112,7 +109,7 @@ const SignInSheetTable: React.FC = () => {
         onClose={handleCloseDialog}
         signIn={selectedSignIn}
       />
-    </Paper>
+    </>
   );
 };
 

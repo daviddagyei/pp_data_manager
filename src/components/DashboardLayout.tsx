@@ -43,10 +43,12 @@ export default function DashboardLayout({
             gridTemplateColumns: {
               xs: '1fr',
               sm: 'repeat(auto-fit, minmax(300px, 1fr))',
-              md: 'repeat(auto-fit, minmax(350px, 1fr))',
+              md: 'repeat(auto-fit, minmax(400px, 1fr))',
             },
             gap: spacing,
             width: '100%',
+            justifyItems: 'center', // Center grid items horizontally
+            alignItems: 'start', // Align grid items to top
           }}
         >
           {children}
@@ -108,6 +110,13 @@ export function DashboardGridItem({
           lg: lg ? getGridColumn(lg) : undefined,
           xl: xl ? getGridColumn(xl) : undefined,
         },
+        width: '100%',
+        maxWidth: {
+          xs: '100%',
+          sm: xs === 12 ? '100%' : '500px', // Limit width for chart cards
+          md: '100%',
+        },
+        mx: 'auto', // Center the item
       }}
     >
       <motion.div variants={itemVariants}>

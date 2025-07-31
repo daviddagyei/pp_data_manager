@@ -10,7 +10,11 @@ import {
 } from 'recharts';
 import { useData } from '../contexts/DataContext';
 
-const HighSchoolChart: React.FC = () => {
+interface HighSchoolChartProps {
+  bare?: boolean; // If true, renders without Paper wrapper and titles
+}
+
+const HighSchoolChart: React.FC<HighSchoolChartProps> = ({ bare = false }) => {
   const { state } = useData();
 
   // Process data for the chart
@@ -98,28 +102,40 @@ const HighSchoolChart: React.FC = () => {
   };
 
   if (chartData.length === 0) {
-    return (
-      <Paper elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom>
-          High School Distribution
-        </Typography>
+    const content = (
+      <Box sx={{ textAlign: 'center', py: bare ? 4 : 0 }}>
+        {!bare && (
+          <Typography variant="h6" gutterBottom>
+            High School Distribution
+          </Typography>
+        )}
         <Typography variant="body2" color="text.secondary">
           No high school data available
         </Typography>
+      </Box>
+    );
+
+    return bare ? content : (
+      <Paper elevation={2} sx={{ p: 3 }}>
+        {content}
       </Paper>
     );
   }
 
-  return (
-    <Paper elevation={2} sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-        High School Distribution
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Student distribution across high schools
-      </Typography>
+  const chartContent = (
+    <>
+      {!bare && (
+        <>
+          <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+            High School Distribution
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Student distribution across high schools
+          </Typography>
+        </>
+      )}
       
-      <Box sx={{ width: '100%', height: 350 }}>
+      <Box sx={{ width: '100%', height: bare ? 400 : 350 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -151,6 +167,12 @@ const HighSchoolChart: React.FC = () => {
           {chartData.length} high school{chartData.length !== 1 ? 's' : ''}
         </Typography>
       </Box>
+    </>
+  );
+
+  return bare ? chartContent : (
+    <Paper elevation={2} sx={{ p: 3 }}>
+      {chartContent}
     </Paper>
   );
 };
