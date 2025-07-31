@@ -30,6 +30,7 @@ const SignInSheetSearchAndFilter: React.FC<SignInSheetSearchAndFilterProps> = ({
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [schoolFilter, setSchoolFilter] = useState('');
   const [gradYearFilter, setGradYearFilter] = useState('');
+  const [eventFilter, setEventFilter] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debouncedSearchQuery = useDebounce(localSearchQuery, 300);
 
@@ -37,21 +38,27 @@ const SignInSheetSearchAndFilter: React.FC<SignInSheetSearchAndFilterProps> = ({
   const filterOptions = useMemo(() => {
     const schools = Array.from(new Set(signIns.map(s => s.school).filter(Boolean))).sort();
     const gradYears = Array.from(new Set(signIns.map(s => s.gradYear).filter(Boolean))).sort();
-    return { schools, gradYears };
+    const events = Array.from(new Set(signIns.map(s => s.event).filter(Boolean))).sort();
+    return { schools, gradYears, events };
   }, [signIns]);
 
   // Filter and search logic
   const filteredRows = useMemo(() => {
     return signIns.filter(row => {
       const matchesSearch = debouncedSearchQuery.trim() === '' ||
+        row.firstName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        row.lastName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         row.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         row.email.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        row.school.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+        row.school.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        row.phone.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        row.event.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       const matchesSchool = !schoolFilter || row.school === schoolFilter;
       const matchesGradYear = !gradYearFilter || row.gradYear === gradYearFilter;
-      return matchesSearch && matchesSchool && matchesGradYear;
+      const matchesEvent = !eventFilter || row.event === eventFilter;
+      return matchesSearch && matchesSchool && matchesGradYear && matchesEvent;
     });
-  }, [signIns, debouncedSearchQuery, schoolFilter, gradYearFilter]);
+  }, [signIns, debouncedSearchQuery, schoolFilter, gradYearFilter, eventFilter]);
 
   // Call onFilter whenever filteredRows changes
   useEffect(() => {
@@ -73,6 +80,7 @@ const SignInSheetSearchAndFilter: React.FC<SignInSheetSearchAndFilterProps> = ({
     setLocalSearchQuery('');
     setSchoolFilter('');
     setGradYearFilter('');
+    setEventFilter('');
   }, []);
 
   return (
@@ -82,7 +90,7 @@ const SignInSheetSearchAndFilter: React.FC<SignInSheetSearchAndFilterProps> = ({
           <TextField
             fullWidth
             variant="outlined"
-            placeholder="Search sign-ins by name, email, or school..."
+            placeholder="Search sign-ins by name, email, school, phone, or event..."
             value={localSearchQuery}
             onChange={e => setLocalSearchQuery(e.target.value)}
             inputRef={searchInputRef}
@@ -105,7 +113,7 @@ const SignInSheetSearchAndFilter: React.FC<SignInSheetSearchAndFilterProps> = ({
           <Typography>Advanced Filters</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <FormControl sx={{ minWidth: 160 }}>
               <InputLabel>School</InputLabel>
               <Select
@@ -129,6 +137,19 @@ const SignInSheetSearchAndFilter: React.FC<SignInSheetSearchAndFilterProps> = ({
                 <MenuItem value="">All</MenuItem>
                 {filterOptions.gradYears.map(year => (
                   <MenuItem key={year} value={year}>{year}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl sx={{ minWidth: 160 }}>
+              <InputLabel>Event</InputLabel>
+              <Select
+                value={eventFilter}
+                label="Event"
+                onChange={e => setEventFilter(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {filterOptions.events.map(event => (
+                  <MenuItem key={event} value={event}>{event}</MenuItem>
                 ))}
               </Select>
             </FormControl>

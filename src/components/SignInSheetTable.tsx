@@ -8,8 +8,16 @@ import SignInSheetSearchAndFilter from './SignInSheetSearchAndFilter';
 
 
 const columns: GridColDef[] = [
-  { field: 'name', headerName: 'Name', width: 180 },
+  { field: 'firstName', headerName: 'First Name', width: 120 },
+  { field: 'lastName', headerName: 'Last Name', width: 120 },
   { field: 'school', headerName: 'School', width: 140 },
+  { field: 'phone', headerName: 'Phone', width: 130,
+    renderCell: (params) => {
+      const value = params.value;
+      if (!value) return <span style={{ color: '#666' }}>-</span>;
+      return <Chip label={value} color="secondary" variant="outlined" size="small" />;
+    },
+  },
   { field: 'gradYear', headerName: 'Grad Year', width: 110 },
   { field: 'email', headerName: 'Email', width: 220,
     renderCell: (params) => (
@@ -24,6 +32,13 @@ const columns: GridColDef[] = [
       if (!value) return <span style={{ color: '#666' }}>-</span>;
       // All dates are MM/YYYY, so just display as chip
       return <Chip label={value} color="primary" size="small" />;
+    },
+  },
+  { field: 'event', headerName: 'Event', width: 150,
+    renderCell: (params) => {
+      const value = params.value;
+      if (!value) return <span style={{ color: '#666' }}>-</span>;
+      return <Chip label={value} color="success" variant="outlined" size="small" />;
     },
   },
 ];

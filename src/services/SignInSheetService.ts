@@ -24,7 +24,7 @@ export class SignInSheetService {
 
   async fetchSignIns(accessToken: string): Promise<SignInRow[]> {
     try {
-      const range = "'sign-ins'!A1:E1000";
+      const range = "'sign-ins'!A1:H1000"; // Updated to include all 8 columns
       const url = `${this.baseUrl}/spreadsheets/${this.spreadsheetId}/values/${range}`;
       const response: AxiosResponse<{ values: string[][] }> = await axios.get(url, {
         headers: this.getAuthHeaders(accessToken),
@@ -33,13 +33,23 @@ export class SignInSheetService {
       const { values } = response.data;
       if (!values || values.length < 2) return [];
       const [, ...rows] = values; // skip header row
-      return rows.map(row => ({
-        name: row[0] || '',
-        school: row[1] || '',
-        gradYear: row[2] || '',
-        email: row[3] || '',
-        date: row[4] || '',
-      }));
+      return rows.map(row => {
+        const firstName = row[0] || '';
+        const lastName = row[1] || '';
+        const fullName = `${firstName} ${lastName}`.trim();
+        
+        return {
+          firstName,
+          lastName,
+          name: fullName, // computed field for backward compatibility
+          school: row[2] || '',
+          phone: row[3] || '',
+          gradYear: row[4] || '',
+          email: row[5] || '',
+          date: row[6] || '',
+          event: row[7] || '',
+        };
+      });
     } catch (error) {
       console.error('Error fetching sign-in sheet:', error);
       throw error;
