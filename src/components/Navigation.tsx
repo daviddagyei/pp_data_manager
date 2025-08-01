@@ -28,6 +28,7 @@ import {
   AccountCircle,
   Home,
   NavigateNext,
+  Logout,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -39,6 +40,7 @@ interface NavigationProps {
     avatar?: string;
   };
   onNavigate?: (page: string) => void;
+  onLogout?: () => void;
 }
 
 const navigationItems = [
@@ -55,7 +57,7 @@ const breadcrumbMap: Record<string, string[]> = {
   settings: ['Home', 'Settings'],
 };
 
-export default function Navigation({ currentPage = 'dashboard', user, onNavigate }: NavigationProps) {
+export default function Navigation({ currentPage = 'dashboard', user, onNavigate, onLogout }: NavigationProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -144,15 +146,13 @@ export default function Navigation({ currentPage = 'dashboard', user, onNavigate
         },
       }}
     >
-      <MenuItem onClick={handleUserMenuClose}>
-        <AccountCircle sx={{ mr: 2 }} />
-        Profile
-      </MenuItem>
-      <MenuItem onClick={handleUserMenuClose}>
-        <Settings sx={{ mr: 2 }} />
-        Account Settings
-      </MenuItem>
-      <MenuItem onClick={handleUserMenuClose}>
+      <MenuItem 
+        onClick={() => {
+          handleUserMenuClose();
+          onLogout?.();
+        }}
+      >
+        <Logout sx={{ mr: 2 }} />
         Logout
       </MenuItem>
     </Menu>

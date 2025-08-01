@@ -179,6 +179,7 @@ const ModernStudentDashboard: React.FC = () => {
             avatar: authState.user.picture,
           }}
           onNavigate={setCurrentPage}
+          onLogout={logout}
         />
         <Container 
           maxWidth="xl" 
@@ -358,6 +359,7 @@ const ModernStudentDashboard: React.FC = () => {
           avatar: authState.user.picture,
         }}
         onNavigate={setCurrentPage}
+        onLogout={logout}
       />
 
       <Box component="main" sx={{ flex: 1 }}>
