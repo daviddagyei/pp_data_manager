@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { GoogleSheetsColumnService } from '../services/GoogleSheetsColumnService';
+import { SignInSheetColumnService } from '../services/SignInSheetColumnService';
 
 export interface ColumnSettings {
   id: string;
@@ -27,8 +28,17 @@ export interface DataDisplaySettings {
   sortDirection: 'asc' | 'desc';
 }
 
+export interface SignInDisplaySettings {
+  recordsPerPage: number;
+  visibleColumns: string[];
+  columnSettings: ColumnSettings[];
+  sortBy: string;
+  sortDirection: 'asc' | 'desc';
+}
+
 export interface AppSettings {
   dataDisplay: DataDisplaySettings;
+  signInDisplay: SignInDisplaySettings;
   theme: {
     mode: 'light' | 'dark';
     primaryColor: string;
@@ -59,7 +69,15 @@ type SettingsAction =
   | { type: 'REORDER_COLUMNS'; payload: ColumnSettings[] }
   | { type: 'SET_SETTINGS'; payload: AppSettings }
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null };
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_SIGNIN_RECORDS_PER_PAGE'; payload: number }
+  | { type: 'TOGGLE_SIGNIN_COLUMN_VISIBILITY'; payload: string }
+  | { type: 'ADD_SIGNIN_CUSTOM_COLUMN'; payload: ColumnSettings }
+  | { type: 'ADD_SIGNIN_CUSTOM_COLUMNS_BATCH'; payload: ColumnSettings[] }
+  | { type: 'REMOVE_SIGNIN_CUSTOM_COLUMN'; payload: string }
+  | { type: 'UPDATE_SIGNIN_COLUMN_SETTINGS'; payload: ColumnSettings }
+  | { type: 'RENAME_SIGNIN_COLUMN'; payload: { id: string; newName: string; newField?: string } }
+  | { type: 'REORDER_SIGNIN_COLUMNS'; payload: ColumnSettings[] };
 
 const defaultColumnSettings: ColumnSettings[] = [
   { id: 'firstName', field: 'firstName', headerName: 'First Name', width: 120, visible: true, editable: false, type: 'string', isCustom: false, required: true, order: 1 },
@@ -78,6 +96,17 @@ const defaultColumnSettings: ColumnSettings[] = [
   { id: 'parentEmail', field: 'parentEmail', headerName: 'Parent Email', width: 180, visible: false, editable: false, type: 'email', isCustom: false, order: 14 },
 ];
 
+const defaultSignInColumnSettings: ColumnSettings[] = [
+  { id: 'firstName', field: 'firstName', headerName: 'First Name', width: 120, visible: true, editable: false, type: 'string', isCustom: false, required: true, order: 1 },
+  { id: 'lastName', field: 'lastName', headerName: 'Last Name', width: 120, visible: true, editable: false, type: 'string', isCustom: false, required: true, order: 2 },
+  { id: 'school', field: 'school', headerName: 'School', width: 140, visible: true, editable: false, type: 'string', isCustom: false, required: true, order: 3 },
+  { id: 'phone', field: 'phone', headerName: 'Phone', width: 130, visible: true, editable: false, type: 'phone', isCustom: false, order: 4 },
+  { id: 'gradYear', field: 'gradYear', headerName: 'Grad Year', width: 110, visible: true, editable: false, type: 'string', isCustom: false, order: 5 },
+  { id: 'email', field: 'email', headerName: 'Email', width: 220, visible: true, editable: false, type: 'email', isCustom: false, required: true, order: 6 },
+  { id: 'date', field: 'date', headerName: 'Date', width: 110, visible: true, editable: false, type: 'date', isCustom: false, order: 7 },
+  { id: 'event', field: 'event', headerName: 'Event', width: 150, visible: true, editable: false, type: 'string', isCustom: false, order: 8 },
+];
+
 const defaultSettings: AppSettings = {
   dataDisplay: {
     recordsPerPage: 25,
@@ -85,6 +114,13 @@ const defaultSettings: AppSettings = {
     columnSettings: defaultColumnSettings,
     sortBy: 'lastName',
     sortDirection: 'asc',
+  },
+  signInDisplay: {
+    recordsPerPage: 25,
+    visibleColumns: ['firstName', 'lastName', 'school', 'phone', 'gradYear', 'email', 'date', 'event'],
+    columnSettings: defaultSignInColumnSettings,
+    sortBy: 'date',
+    sortDirection: 'desc',
   },
   theme: {
     mode: 'light',
@@ -283,6 +319,151 @@ const settingsReducer = (state: SettingsState, action: SettingsAction): Settings
         error: action.payload,
       };
 
+    // Sign-In Display Actions
+    case 'SET_SIGNIN_RECORDS_PER_PAGE':
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          signInDisplay: {
+            ...state.settings.signInDisplay,
+            recordsPerPage: action.payload,
+          },
+        },
+      };
+
+    case 'TOGGLE_SIGNIN_COLUMN_VISIBILITY':
+      const signInColumnId = action.payload;
+      const updatedSignInColumnSettings = state.settings.signInDisplay.columnSettings.map(col =>
+        col.id === signInColumnId ? { ...col, visible: !col.visible } : col
+      );
+      const visibleSignInColumns = updatedSignInColumnSettings.filter(col => col.visible).map(col => col.id);
+      
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          signInDisplay: {
+            ...state.settings.signInDisplay,
+            columnSettings: updatedSignInColumnSettings,
+            visibleColumns: visibleSignInColumns,
+          },
+        },
+      };
+
+    case 'ADD_SIGNIN_CUSTOM_COLUMN':
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          signInDisplay: {
+            ...state.settings.signInDisplay,
+            columnSettings: [...state.settings.signInDisplay.columnSettings, action.payload],
+            visibleColumns: [...state.settings.signInDisplay.visibleColumns, action.payload.id],
+          },
+        },
+      };
+
+    case 'ADD_SIGNIN_CUSTOM_COLUMNS_BATCH':
+      // Filter out columns that already exist to prevent duplicates
+      const existingSignInSettings = state.settings.signInDisplay.columnSettings;
+      const existingSignInIds = new Set(existingSignInSettings.map(col => col.id));
+      const existingSignInFields = new Set(existingSignInSettings.map(col => col.field));
+      const existingSignInHeaders = new Set(existingSignInSettings.map(col => col.headerName.toLowerCase()));
+      
+      const filteredNewSignInColumns = action.payload.filter(newCol => {
+        const isDuplicate = existingSignInIds.has(newCol.id) || 
+                           existingSignInFields.has(newCol.field) || 
+                           existingSignInHeaders.has(newCol.headerName.toLowerCase());
+        
+        if (isDuplicate) {
+          console.warn(`🚫 Preventing duplicate sign-in column addition: "${newCol.headerName}" (${newCol.field})`);
+          return false;
+        }
+        return true;
+      });
+      
+      if (filteredNewSignInColumns.length === 0) {
+        console.log('🚫 All sign-in columns in batch already exist, no changes made');
+        return state; // No changes needed
+      }
+      
+      const filteredNewSignInColumnIds = filteredNewSignInColumns.map(col => col.id);
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          signInDisplay: {
+            ...state.settings.signInDisplay,
+            columnSettings: [...existingSignInSettings, ...filteredNewSignInColumns],
+            visibleColumns: [...state.settings.signInDisplay.visibleColumns, ...filteredNewSignInColumnIds],
+          },
+        },
+      };
+
+    case 'REMOVE_SIGNIN_CUSTOM_COLUMN':
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          signInDisplay: {
+            ...state.settings.signInDisplay,
+            columnSettings: state.settings.signInDisplay.columnSettings.filter(col => col.id !== action.payload),
+            visibleColumns: state.settings.signInDisplay.visibleColumns.filter(id => id !== action.payload),
+          },
+        },
+      };
+
+    case 'UPDATE_SIGNIN_COLUMN_SETTINGS':
+      const updatedSignInColumns = state.settings.signInDisplay.columnSettings.map(col =>
+        col.id === action.payload.id ? action.payload : col
+      );
+      
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          signInDisplay: {
+            ...state.settings.signInDisplay,
+            columnSettings: updatedSignInColumns,
+          },
+        },
+      };
+
+    case 'RENAME_SIGNIN_COLUMN':
+      const renamedSignInColumns = state.settings.signInDisplay.columnSettings.map(col =>
+        col.id === action.payload.id 
+          ? { 
+              ...col, 
+              headerName: action.payload.newName,
+              field: action.payload.newField || col.field
+            } 
+          : col
+      );
+      
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          signInDisplay: {
+            ...state.settings.signInDisplay,
+            columnSettings: renamedSignInColumns,
+          },
+        },
+      };
+
+    case 'REORDER_SIGNIN_COLUMNS':
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          signInDisplay: {
+            ...state.settings.signInDisplay,
+            columnSettings: action.payload,
+          },
+        },
+      };
+
     default:
       return state;
   }
@@ -300,7 +481,16 @@ interface SettingsContextType {
   resetToDefaults: () => void;
   syncWithGoogleSheets: () => Promise<void>;
   syncDiscoveredCustomColumns: (discoveredColumns: Array<{id: string, headerName: string, field: string}>) => void;
+  syncDiscoveredSignInCustomColumns: (discoveredColumns: Array<{id: string, headerName: string, field: string}>) => void;
   cleanupDuplicateColumns: () => void;
+  // Sign-In Display methods
+  setSignInRecordsPerPage: (count: number) => void;
+  toggleSignInColumnVisibility: (columnId: string) => void;
+  addSignInCustomColumn: (column: Omit<ColumnSettings, 'id' | 'isCustom'>) => Promise<void>;
+  removeSignInCustomColumn: (columnId: string) => Promise<void>;
+  updateSignInColumnSettings: (column: ColumnSettings) => void;
+  renameSignInColumn: (id: string, newName: string, newField?: string) => void;
+  reorderSignInColumns: (columns: ColumnSettings[]) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -360,6 +550,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         
         // Merge column settings properly - preserve saved visibility states
         let mergedColumnSettings = defaultColumnSettings;
+        let mergedSignInColumnSettings = defaultSignInColumnSettings;
+        
         if (parsed.dataDisplay?.columnSettings) {
           // Create a map of saved column settings
           const savedColumnsMap = new Map(
@@ -378,6 +570,25 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
           );
           mergedColumnSettings = [...mergedColumnSettings, ...customColumns];
         }
+
+        if (parsed.signInDisplay?.columnSettings) {
+          // Create a map of saved sign-in column settings
+          const savedSignInColumnsMap = new Map(
+            parsed.signInDisplay.columnSettings.map((col: ColumnSettings) => [col.id, col])
+          );
+          
+          // Update default sign-in columns with saved states
+          mergedSignInColumnSettings = defaultSignInColumnSettings.map(defaultCol => {
+            const savedCol = savedSignInColumnsMap.get(defaultCol.id);
+            return savedCol ? { ...defaultCol, ...savedCol } : defaultCol;
+          });
+          
+          // Add any custom sign-in columns that don't exist in defaults
+          const customSignInColumns = parsed.signInDisplay.columnSettings.filter(
+            (col: ColumnSettings) => col.isCustom && !defaultSignInColumnSettings.find(dc => dc.id === col.id)
+          );
+          mergedSignInColumnSettings = [...mergedSignInColumnSettings, ...customSignInColumns];
+        }
         
         // Merge with defaults to ensure new settings are included
         const mergedSettings = {
@@ -389,6 +600,13 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             columnSettings: mergedColumnSettings,
             // Update visibleColumns based on merged column settings
             visibleColumns: mergedColumnSettings.filter(col => col.visible).map(col => col.id),
+          },
+          signInDisplay: {
+            ...defaultSettings.signInDisplay,
+            ...parsed.signInDisplay,
+            columnSettings: mergedSignInColumnSettings,
+            // Update visibleColumns based on merged sign-in column settings
+            visibleColumns: mergedSignInColumnSettings.filter(col => col.visible).map(col => col.id),
           },
         };
         
@@ -645,6 +863,142 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
 
+  const syncDiscoveredSignInCustomColumns = (discoveredColumns: Array<{id: string, headerName: string, field: string}>) => {
+    if (discoveredColumns.length === 0) {
+      return;
+    }
+
+    console.log('🔄 syncDiscoveredSignInCustomColumns called with:', discoveredColumns.map(col => `${col.headerName} (${col.field})`));
+
+    // Get current sign-in column settings
+    const currentSettings = state.settings.signInDisplay.columnSettings;
+    console.log('🔄 Current sign-in settings before sync:', currentSettings.map(col => `${col.headerName} (${col.field})`));
+    
+    const existingIds = new Set(currentSettings.map(col => col.id));
+    const existingHeaderNames = new Set(currentSettings.map(col => col.headerName.toLowerCase()));
+    const existingFields = new Set(currentSettings.map(col => col.field));
+    const newColumns: ColumnSettings[] = [];
+
+    discoveredColumns.forEach(({ id, headerName, field }) => {
+      // Check for ALL types of collisions: ID, headerName, and field
+      const idExists = existingIds.has(id);
+      const headerExists = existingHeaderNames.has(headerName.toLowerCase());
+      const fieldExists = existingFields.has(field);
+      
+      console.log(`🔍 Checking sign-in column "${headerName}": idExists=${idExists}, headerExists=${headerExists}, fieldExists=${fieldExists}`);
+      
+      if (!idExists && !headerExists && !fieldExists) {
+        const maxOrder = Math.max(...currentSettings.map(col => col.order || 0));
+        const newColumn: ColumnSettings = {
+          id,
+          field,
+          headerName,
+          type: 'string',
+          width: 150,
+          visible: true,
+          editable: true,
+          isCustom: true,
+          order: maxOrder + newColumns.length + 1
+        };
+        newColumns.push(newColumn);
+        
+        // Add to our tracking sets to prevent duplicates within this batch
+        existingIds.add(id);
+        existingHeaderNames.add(headerName.toLowerCase());
+        existingFields.add(field);
+        
+        console.log(`✅ Will add new sign-in column: "${headerName}" (${field})`);
+      } else {
+        console.log(`⏭️ Sign-in column "${headerName}" already exists (ID: ${idExists}, Header: ${headerExists}, Field: ${fieldExists}), skipping`);
+      }
+    });
+
+    // Add all new columns at once using a single batch dispatch
+    if (newColumns.length > 0) {
+      console.log(`🚀 Auto-adding ${newColumns.length} new sign-in custom columns:`, newColumns.map(col => col.headerName));
+      
+      // Use a single batch action instead of multiple dispatches
+      dispatch({ type: 'ADD_SIGNIN_CUSTOM_COLUMNS_BATCH', payload: newColumns });
+    } else {
+      console.log('✨ All discovered sign-in columns already exist in settings');
+    }
+  };
+
+  // Sign-In Display Methods
+  const setSignInRecordsPerPage = (count: number) => {
+    dispatch({ type: 'SET_SIGNIN_RECORDS_PER_PAGE', payload: count });
+  };
+
+  const toggleSignInColumnVisibility = (columnId: string) => {
+    dispatch({ type: 'TOGGLE_SIGNIN_COLUMN_VISIBILITY', payload: columnId });
+  };
+
+  const addSignInCustomColumn = async (column: Omit<ColumnSettings, 'id' | 'isCustom'>) => {
+    const maxOrder = Math.max(...state.settings.signInDisplay.columnSettings.map(col => col.order || 0));
+    const newColumn: ColumnSettings = {
+      ...column,
+      id: `signin_custom_${Date.now()}`,
+      isCustom: true,
+      visible: true,
+      order: maxOrder + 1,
+    };
+
+    // Add to local state first
+    dispatch({ type: 'ADD_SIGNIN_CUSTOM_COLUMN', payload: newColumn });
+
+    // Sync to Sign-In Google Sheets
+    try {
+      if (authState.user?.accessToken) {
+        const columnService = new SignInSheetColumnService();
+        await columnService.addColumn(authState.user.accessToken, newColumn.headerName);
+        console.log(`Successfully synced sign-in column '${newColumn.headerName}' to Google Sheets`);
+      }
+    } catch (error) {
+      console.error('Failed to sync sign-in column to Google Sheets:', error);
+      // Optionally show user notification that column was added locally but not synced
+    }
+  };
+
+  const removeSignInCustomColumn = async (columnId: string) => {
+    const columnToRemove = state.settings.signInDisplay.columnSettings.find((col: ColumnSettings) => col.id === columnId);
+    
+    if (!columnToRemove) {
+      throw new Error('Sign-in column not found');
+    }
+
+    // Remove from local state first
+    dispatch({ type: 'REMOVE_SIGNIN_CUSTOM_COLUMN', payload: columnId });
+
+    // Try to remove from Sign-In Google Sheets if authenticated
+    if (authState.user?.accessToken && columnToRemove.isCustom) {
+      try {
+        const columnService = new SignInSheetColumnService();
+        await columnService.removeColumn(authState.user.accessToken, columnToRemove.headerName);
+        console.log(`Successfully removed sign-in column '${columnToRemove.headerName}' from Google Sheets`);
+      } catch (error) {
+        console.error('Failed to remove sign-in column from Google Sheets:', error);
+        // Don't throw here - the column was already removed from local state
+        // Optionally show user notification that column was removed locally but not synced
+      }
+    }
+  };
+
+  const updateSignInColumnSettings = (column: ColumnSettings) => {
+    dispatch({ type: 'UPDATE_SIGNIN_COLUMN_SETTINGS', payload: column });
+  };
+
+  const renameSignInColumn = (id: string, newName: string, newField?: string) => {
+    dispatch({ type: 'RENAME_SIGNIN_COLUMN', payload: { id, newName, newField } });
+  };
+
+  const reorderSignInColumns = (columns: ColumnSettings[]) => {
+    const reorderedColumns = columns.map((col, index) => ({
+      ...col,
+      order: index + 1,
+    }));
+    dispatch({ type: 'REORDER_SIGNIN_COLUMNS', payload: reorderedColumns });
+  };
+
   const value: SettingsContextType = {
     state,
     setRecordsPerPage,
@@ -657,7 +1011,16 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     resetToDefaults,
     syncWithGoogleSheets,
     syncDiscoveredCustomColumns,
+    syncDiscoveredSignInCustomColumns,
     cleanupDuplicateColumns,
+    // Sign-In methods
+    setSignInRecordsPerPage,
+    toggleSignInColumnVisibility,
+    addSignInCustomColumn,
+    removeSignInCustomColumn,
+    updateSignInColumnSettings,
+    renameSignInColumn,
+    reorderSignInColumns,
   };
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

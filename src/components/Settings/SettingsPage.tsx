@@ -14,9 +14,11 @@ import {
 import { motion } from 'framer-motion';
 import DataDisplaySettings from './SimpleDataDisplaySettings';
 import { ColumnManagementDialog } from '../ColumnManagementDialog';
+import { SignInColumnManagementDialog } from '../SignInColumnManagementDialog';
 
 const SettingsPage: React.FC = () => {
   const [columnDialogOpen, setColumnDialogOpen] = useState(false);
+  const [signInColumnDialogOpen, setSignInColumnDialogOpen] = useState(false);
 
   return (
     <Container maxWidth="lg" sx={{ py: 2 }}>
@@ -86,6 +88,36 @@ const SettingsPage: React.FC = () => {
               </Box>
             </Paper>
 
+            {/* Sign-In Custom Column Management Section */}
+            <Paper 
+              sx={{ 
+                p: 3, 
+                mb: 3, 
+                bgcolor: 'grey.50',
+                border: '1px solid',
+                borderColor: 'grey.200'
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box>
+                  <Typography variant="h6" gutterBottom>
+                    Sign-In Custom Columns
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Add custom fields to collect additional sign-in information
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setSignInColumnDialogOpen(true)}
+                  sx={{ minWidth: 140 }}
+                >
+                  Manage Sign-In Columns
+                </Button>
+              </Box>
+            </Paper>
+
             <Divider sx={{ my: 3 }} />
 
             <DataDisplaySettings />
@@ -96,6 +128,11 @@ const SettingsPage: React.FC = () => {
       <ColumnManagementDialog
         open={columnDialogOpen}
         onClose={() => setColumnDialogOpen(false)}
+      />
+
+      <SignInColumnManagementDialog
+        open={signInColumnDialogOpen}
+        onClose={() => setSignInColumnDialogOpen(false)}
       />
     </Container>
   );

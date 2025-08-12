@@ -8,4 +8,5 @@ export interface SignInRow {
   email: string;
   date: string;
   event: string;
+  customFields?: Record<string, any>; // Support for custom fields
 }

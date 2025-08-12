@@ -1,11 +1,14 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
 import type { SignInRow } from '../types/signIn';
+import { SignInSheetColumnService } from './SignInSheetColumnService';
+import { SignInDataTransformService } from './SignInDataTransformService';
 
 export class SignInSheetService {
   private readonly baseUrl = 'https://sheets.googleapis.com/v4';
   private readonly spreadsheetId: string;
   private readonly apiKey: string;
+  private columnService: SignInSheetColumnService;
 
   constructor() {
     this.spreadsheetId = import.meta.env.VITE_GOOGLE_SHEETS_ID;
@@ -13,6 +16,7 @@ export class SignInSheetService {
     if (!this.spreadsheetId || !this.apiKey) {
       throw new Error('Google Sheets configuration missing.');
     }
+    this.columnService = new SignInSheetColumnService();
   }
 
   private getAuthHeaders(accessToken: string) {
@@ -32,28 +36,34 @@ export class SignInSheetService {
       });
       const { values } = response.data;
       if (!values || values.length < 2) return [];
-      const [, ...rows] = values; // skip header row
-      return rows.map(row => {
-        const firstName = row[0] || '';
-        const lastName = row[1] || '';
-        const fullName = `${firstName} ${lastName}`.trim();
-        
-        return {
-          firstName,
-          lastName,
-          name: fullName, // computed field for backward compatibility
-          school: row[2] || '',
-          phone: row[3] || '',
-          gradYear: row[4] || '',
-          email: row[5] || '',
-          date: row[6] || '',
-          event: row[7] || '',
-        };
-      });
+      
+      // Transform the raw data to SignInRow objects with custom field support
+      return SignInDataTransformService.transformSheetsDataToSignIns(values);
     } catch (error) {
       console.error('Error fetching sign-in sheet:', error);
       throw error;
     }
+  }
+
+  // Column management methods using the column service
+  async addColumn(accessToken: string, columnName: string, insertAfterColumn?: number): Promise<void> {
+    return this.columnService.addColumn(accessToken, columnName, insertAfterColumn);
+  }
+
+  async renameColumn(accessToken: string, oldColumnName: string, newColumnName: string): Promise<void> {
+    return this.columnService.renameColumn(accessToken, oldColumnName, newColumnName);
+  }
+
+  async removeColumn(accessToken: string, columnName: string): Promise<void> {
+    return this.columnService.removeColumn(accessToken, columnName);
+  }
+
+  async syncColumnSettings(accessToken: string, columnSettings: any[]): Promise<any> {
+    return this.columnService.syncColumnSettings(accessToken, columnSettings);
+  }
+
+  async getSheetHeaders(accessToken: string): Promise<string[]> {
+    return this.columnService.getSheetHeaders(accessToken);
   }
 }
 
