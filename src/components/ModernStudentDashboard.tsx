@@ -36,7 +36,7 @@ const ModernStudentDashboard: React.FC = () => {
   const theme = useTheme();
   const { state: authState, logout } = useAuth();
   const { state: dataState, fetchStudents } = useData();
-  const { state: settingsState, syncDiscoveredCustomColumns, cleanupDuplicateColumns } = useSettings();
+  const { state: settingsState, syncDiscoveredCustomColumns, removeDeletedCustomColumns, cleanupDuplicateColumns } = useSettings();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -70,7 +70,8 @@ const ModernStudentDashboard: React.FC = () => {
             await columnSyncService.syncCustomColumnsWithSettings(
               accessToken,
               settingsState.settings.dataDisplay.columnSettings,
-              syncDiscoveredCustomColumns
+              syncDiscoveredCustomColumns,
+              removeDeletedCustomColumns
             );
           } catch (error) {
             console.error('❌ Failed to sync custom columns:', error);

@@ -31,7 +31,7 @@ export class GoogleSheetsColumnService {
    */
   async getSheetHeaders(accessToken: string): Promise<string[]> {
     try {
-      const range = `'${this.sheetName}'!1:1`;
+      const range = `${this.sheetName}!1:1`;
       const url = `${this.baseUrl}/spreadsheets/${this.spreadsheetId}/values/${range}`;
       
       const response = await axios.get(url, {
@@ -93,30 +93,22 @@ export class GoogleSheetsColumnService {
     insertAfterColumn?: number
   ): Promise<void> {
     try {
-      const metadata = await this.getSheetMetadata(accessToken);
       const headers = await this.getSheetHeaders(accessToken);
       
-      // Determine where to insert the column
-      const insertIndex = insertAfterColumn !== undefined 
+      // Determine where to add the column
+      const targetColumnIndex = insertAfterColumn !== undefined 
         ? insertAfterColumn + 1 
         : headers.length;
 
-      // First, add a new column to the sheet if needed
-      if (insertIndex >= metadata.columnCount) {
-        await this.insertColumns(accessToken, metadata.sheetId, metadata.columnCount, 1);
-      }
+      // Use batchUpdate for values
+      const columnLetter = this.numberToColumn(targetColumnIndex + 1);
+      const range = `${this.sheetName}!${columnLetter}1`;
+      
+      await this.batchUpdateValues(accessToken, range, [[columnName]]);
 
-      // Update the header
-      await this.updateCellValue(
-        accessToken, 
-        1, 
-        insertIndex + 1, // 1-indexed for Google Sheets
-        columnName
-      );
-
-      console.log(`Successfully added column '${columnName}' at position ${insertIndex}`);
+      console.log(`✅ Successfully added column '${columnName}' at ${columnLetter}1`);
     } catch (error) {
-      console.error('Error adding column:', error);
+      console.error('❌ Error adding column:', error);
       throw new Error(`Failed to add column: ${error}`);
     }
   }
@@ -329,29 +321,6 @@ export class GoogleSheetsColumnService {
   }
 
   /**
-   * Insert columns at specified position
-   */
-  private async insertColumns(
-    accessToken: string,
-    sheetId: number,
-    startIndex: number,
-    count: number
-  ): Promise<void> {
-    const request = {
-      insertDimension: {
-        range: {
-          sheetId,
-          dimension: 'COLUMNS',
-          startIndex,
-          endIndex: startIndex + count
-        }
-      }
-    };
-
-    await this.batchUpdate(accessToken, [request]);
-  }
-
-  /**
    * Delete columns at specified position
    */
   private async deleteColumns(
@@ -384,7 +353,7 @@ export class GoogleSheetsColumnService {
     value: string
   ): Promise<void> {
     const columnLetter = this.numberToColumn(column);
-    const range = `'${this.sheetName}'!${columnLetter}${row}`;
+    const range = `${this.sheetName}!${columnLetter}${row}`;
     
     await this.updateRange(accessToken, range, [[value]]);
   }
@@ -399,16 +368,21 @@ export class GoogleSheetsColumnService {
   ): Promise<void> {
     const url = `${this.baseUrl}/spreadsheets/${this.spreadsheetId}/values/${range}`;
     
-    await axios.put(url, {
-      values,
-      majorDimension: 'ROWS'
-    }, {
-      headers: this.getAuthHeaders(accessToken),
-      params: {
-        key: this.apiKey,
-        valueInputOption: 'RAW'
-      }
-    });
+    try {
+      await axios.put(url, {
+        values,
+        majorDimension: 'ROWS'
+      }, {
+        headers: this.getAuthHeaders(accessToken),
+        params: {
+          key: this.apiKey,
+          valueInputOption: 'RAW'
+        }
+      });
+    } catch (error: any) {
+      console.error('❌ Failed to update range:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
   /**
@@ -417,12 +391,41 @@ export class GoogleSheetsColumnService {
   private async batchUpdate(accessToken: string, requests: any[]): Promise<void> {
     const url = `${this.baseUrl}/spreadsheets/${this.spreadsheetId}:batchUpdate`;
     
-    await axios.post(url, {
-      requests
-    }, {
-      headers: this.getAuthHeaders(accessToken),
-      params: { key: this.apiKey }
-    });
+    try {
+      await axios.post(url, {
+        requests
+      }, {
+        headers: this.getAuthHeaders(accessToken),
+        params: { key: this.apiKey }
+      });
+    } catch (error) {
+      console.error('❌ batchUpdate failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Batch update values using the batchUpdate API
+   */
+  private async batchUpdateValues(accessToken: string, range: string, values: any[][]): Promise<void> {
+    const url = `${this.baseUrl}/spreadsheets/${this.spreadsheetId}/values:batchUpdate`;
+    
+    try {
+      await axios.post(url, {
+        valueInputOption: 'RAW',
+        data: [{
+          range: range,
+          values: values,
+          majorDimension: 'ROWS'
+        }]
+      }, {
+        headers: this.getAuthHeaders(accessToken),
+        params: { key: this.apiKey }
+      });
+    } catch (error: any) {
+      console.error('❌ Failed to update values:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
   /**

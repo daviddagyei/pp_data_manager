@@ -482,6 +482,8 @@ interface SettingsContextType {
   syncWithGoogleSheets: () => Promise<void>;
   syncDiscoveredCustomColumns: (discoveredColumns: Array<{id: string, headerName: string, field: string}>) => void;
   syncDiscoveredSignInCustomColumns: (discoveredColumns: Array<{id: string, headerName: string, field: string}>) => void;
+  removeDeletedCustomColumns: (deletedColumns: Array<{id: string, headerName: string, field: string}>) => void;
+  removeDeletedSignInCustomColumns: (deletedColumns: Array<{id: string, headerName: string, field: string}>) => void;
   cleanupDuplicateColumns: () => void;
   // Sign-In Display methods
   setSignInRecordsPerPage: (count: number) => void;
@@ -827,6 +829,74 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
 
+  const removeDeletedCustomColumns = (deletedColumns: Array<{id: string, headerName: string, field: string}>) => {
+    if (deletedColumns.length === 0) {
+      return;
+    }
+
+    console.log('🗑️ removeDeletedCustomColumns called with:', deletedColumns.map(col => `${col.headerName} (${col.field})`));
+
+    // Get current column settings
+    const currentSettings = state.settings.dataDisplay.columnSettings;
+    console.log('🗑️ Current settings before deletion:', currentSettings.map(col => `${col.headerName} (${col.field})`));
+    
+    // Find columns to remove by matching any identifier
+    const columnsToRemove = currentSettings.filter(settingCol => {
+      return deletedColumns.some(deletedCol => 
+        settingCol.id === deletedCol.id || 
+        settingCol.field === deletedCol.field ||
+        settingCol.headerName.toLowerCase() === deletedCol.headerName.toLowerCase()
+      );
+    });
+
+    if (columnsToRemove.length > 0) {
+      console.log(`🗑️ Removing ${columnsToRemove.length} deleted custom columns:`, columnsToRemove.map(col => col.headerName));
+      
+      // Remove columns one by one
+      columnsToRemove.forEach(col => {
+        dispatch({ type: 'REMOVE_CUSTOM_COLUMN', payload: col.id });
+      });
+      
+      console.log('✅ Custom column deletion completed');
+    } else {
+      console.log('ℹ️ No columns found to remove from settings');
+    }
+  };
+
+  const removeDeletedSignInCustomColumns = (deletedColumns: Array<{id: string, headerName: string, field: string}>) => {
+    if (deletedColumns.length === 0) {
+      return;
+    }
+
+    console.log('🗑️ removeDeletedSignInCustomColumns called with:', deletedColumns.map(col => `${col.headerName} (${col.field})`));
+
+    // Get current sign-in column settings
+    const currentSettings = state.settings.signInDisplay.columnSettings;
+    console.log('🗑️ Current sign-in settings before deletion:', currentSettings.map(col => `${col.headerName} (${col.field})`));
+    
+    // Find columns to remove by matching any identifier
+    const columnsToRemove = currentSettings.filter(settingCol => {
+      return deletedColumns.some(deletedCol => 
+        settingCol.id === deletedCol.id || 
+        settingCol.field === deletedCol.field ||
+        settingCol.headerName.toLowerCase() === deletedCol.headerName.toLowerCase()
+      );
+    });
+
+    if (columnsToRemove.length > 0) {
+      console.log(`🗑️ Removing ${columnsToRemove.length} deleted sign-in custom columns:`, columnsToRemove.map(col => col.headerName));
+      
+      // Remove columns one by one
+      columnsToRemove.forEach(col => {
+        dispatch({ type: 'REMOVE_SIGNIN_CUSTOM_COLUMN', payload: col.id });
+      });
+      
+      console.log('✅ Sign-in custom column deletion completed');
+    } else {
+      console.log('ℹ️ No sign-in columns found to remove from settings');
+    }
+  };
+
   /**
    * Clean up duplicate columns in settings
    */
@@ -1012,6 +1082,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     syncWithGoogleSheets,
     syncDiscoveredCustomColumns,
     syncDiscoveredSignInCustomColumns,
+    removeDeletedCustomColumns,
+    removeDeletedSignInCustomColumns,
     cleanupDuplicateColumns,
     // Sign-In methods
     setSignInRecordsPerPage,

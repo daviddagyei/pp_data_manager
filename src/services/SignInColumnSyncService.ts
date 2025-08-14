@@ -14,6 +14,53 @@ export class SignInColumnSyncService {
   }
 
   /**
+   * Detect columns that exist in settings but no longer exist in Google Sheets
+   */
+  async detectDeletedCustomColumns(
+    accessToken: string,
+    currentColumnSettings: Array<{id: string, headerName: string, field: string}>
+  ): Promise<Array<{id: string, headerName: string, field: string}>> {
+    try {
+      // Get current headers from Sign-In Google Sheets
+      const headers = await this.columnService.getSheetHeaders(accessToken);
+      console.log('📋 Sign-in sheet headers for deletion check:', headers);
+      
+      // Detect all custom columns currently in the sheet
+      const currentSheetColumns = SignInDataTransformService.detectCustomColumns(headers);
+      console.log('🔍 Current sign-in sheet custom columns:', currentSheetColumns);
+      
+      // Create sets for sheet column identifiers
+      const sheetHeaders = new Set(currentSheetColumns.map((col: any) => col.headerName.toLowerCase()));
+      const sheetFields = new Set(currentSheetColumns.map((col: any) => col.field));
+      
+      // Find columns in settings that no longer exist in the sheet
+      const deletedColumns = currentColumnSettings.filter(settingCol => {
+        // Skip standard columns - only check custom columns
+        const isCustomColumn = settingCol.field.startsWith('custom_');
+        if (!isCustomColumn) return false;
+        
+        const headerExists = sheetHeaders.has(settingCol.headerName.toLowerCase());
+        const fieldExists = sheetFields.has(settingCol.field);
+        
+        console.log(`🔎 Checking sign-in deletion for "${settingCol.headerName}": headerExists=${headerExists}, fieldExists=${fieldExists}`);
+        
+        return !headerExists && !fieldExists;
+      });
+      
+      if (deletedColumns.length > 0) {
+        console.log(`🗑️ Detected ${deletedColumns.length} deleted sign-in custom columns:`, deletedColumns.map(col => col.headerName));
+      } else {
+        console.log('ℹ️ No deleted sign-in custom columns detected');
+      }
+      
+      return deletedColumns;
+    } catch (error) {
+      console.error('❌ Error detecting deleted sign-in custom columns:', error);
+      return [];
+    }
+  }
+
+  /**
    * Detect and return new custom columns from Sign-In Google Sheets headers
    * that don't exist in the current column settings
    */
@@ -70,7 +117,8 @@ export class SignInColumnSyncService {
   async syncCustomColumnsWithSettings(
     accessToken: string,
     currentColumnSettings: Array<{id: string, headerName: string, field: string}>,
-    syncCallback: (discoveredColumns: Array<{id: string, headerName: string, field: string}>) => void
+    addColumnsCallback: (discoveredColumns: Array<{id: string, headerName: string, field: string}>) => void,
+    removeColumnsCallback?: (deletedColumns: Array<{id: string, headerName: string, field: string}>) => void
   ): Promise<void> {
     try {
       const now = Date.now();
@@ -86,6 +134,18 @@ export class SignInColumnSyncService {
       console.log('🔄 Starting sign-in column sync...');
       console.log('Current sign-in column settings:', currentColumnSettings.length, 'columns');
       
+      // Check for deleted columns first
+      if (removeColumnsCallback) {
+        const deletedColumns = await this.detectDeletedCustomColumns(accessToken, currentColumnSettings);
+        
+        if (deletedColumns.length > 0) {
+          console.log('🗑️ Found deleted sign-in columns to remove:', deletedColumns);
+          removeColumnsCallback(deletedColumns);
+          console.log('✅ Sign-in column deletion callback completed');
+        }
+      }
+      
+      // Then check for new columns
       const newColumns = await this.detectNewCustomColumns(accessToken, currentColumnSettings);
       
       if (newColumns.length > 0) {
@@ -109,7 +169,7 @@ export class SignInColumnSyncService {
         
         if (finalColumns.length > 0) {
           console.log('✅ Syncing', finalColumns.length, 'validated new sign-in columns');
-          syncCallback(finalColumns);
+          addColumnsCallback(finalColumns);
           console.log('✅ Sign-in column sync callback completed');
         } else {
           console.log('ℹ️ All new sign-in columns were duplicates, skipping sync');

@@ -24,7 +24,7 @@ export const SignInSheetProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [signIns, setSignIns] = useState<SignInRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { syncDiscoveredSignInCustomColumns, state: settingsState } = useSettings();
+  const { syncDiscoveredSignInCustomColumns, removeDeletedSignInCustomColumns, state: settingsState } = useSettings();
 
   const fetchSignIns = useCallback(async (accessToken: string) => {
     setLoading(true);
@@ -38,14 +38,15 @@ export const SignInSheetProvider: React.FC<{ children: ReactNode }> = ({ childre
       await signInColumnSyncService.syncCustomColumnsWithSettings(
         accessToken,
         currentColumnSettings,
-        syncDiscoveredSignInCustomColumns
+        syncDiscoveredSignInCustomColumns,
+        removeDeletedSignInCustomColumns
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch sign-in sheet');
     } finally {
       setLoading(false);
     }
-  }, [syncDiscoveredSignInCustomColumns, settingsState.settings.signInDisplay.columnSettings]);
+  }, [syncDiscoveredSignInCustomColumns, removeDeletedSignInCustomColumns, settingsState.settings.signInDisplay.columnSettings]);
 
   // Column management methods
   const addSheetColumn = useCallback(async (

@@ -31,7 +31,7 @@ export class SignInSheetColumnService {
    */
   async getSheetHeaders(accessToken: string): Promise<string[]> {
     try {
-      const range = `'${this.sheetName}'!1:1`;
+      const range = `${this.sheetName}!1:1`;
       const url = `${this.baseUrl}/spreadsheets/${this.spreadsheetId}/values/${range}`;
       
       const response = await axios.get(url, {
@@ -93,31 +93,23 @@ export class SignInSheetColumnService {
     insertAfterColumn?: number
   ): Promise<void> {
     try {
-      const metadata = await this.getSheetMetadata(accessToken);
       const headers = await this.getSheetHeaders(accessToken);
       
-      // Determine where to insert the column
-      const insertIndex = insertAfterColumn !== undefined 
+      // Determine where to add the column
+      const targetColumnIndex = insertAfterColumn !== undefined 
         ? insertAfterColumn + 1 
         : headers.length;
 
-      // First, add a new column to the sheet if needed
-      if (insertIndex >= metadata.columnCount) {
-        await this.insertColumns(accessToken, metadata.sheetId, metadata.columnCount, 1);
-      }
+      // Simply add the header to the target column
+      const columnLetter = this.numberToColumn(targetColumnIndex + 1);
+      const range = `${this.sheetName}!${columnLetter}1`;
+      
+      await this.updateRange(accessToken, range, [[columnName]]);
 
-      // Update the header
-      await this.updateCellValue(
-        accessToken, 
-        1, 
-        insertIndex + 1, // 1-indexed for Google Sheets
-        columnName
-      );
-
-      console.log(`Successfully added column '${columnName}' at position ${insertIndex} to sign-in sheet`);
+      console.log(`✅ Successfully added sign-in column '${columnName}' at ${columnLetter}1`);
     } catch (error) {
-      console.error('Error adding column to sign-in sheet:', error);
-      throw new Error(`Failed to add column to sign-in sheet: ${error}`);
+      console.error('❌ Error adding sign-in column:', error);
+      throw new Error(`Failed to add sign-in column: ${error}`);
     }
   }
 
@@ -199,7 +191,7 @@ export class SignInSheetColumnService {
       }
 
       // Update the header row with the new order
-      const range = `'${this.sheetName}'!1:1`;
+      const range = `${this.sheetName}!1:1`;
       await this.updateRange(accessToken, range, [newHeaderOrder]);
 
       console.log('Successfully reordered sign-in columns');
@@ -294,7 +286,7 @@ export class SignInSheetColumnService {
       if (columnIndex === -1) return false;
 
       const columnLetter = this.numberToColumn(columnIndex + 1);
-      const range = `'${this.sheetName}'!${columnLetter}2:${columnLetter}1000`;
+      const range = `${this.sheetName}!${columnLetter}2:${columnLetter}1000`;
       
       const response = await axios.get(
         `${this.baseUrl}/spreadsheets/${this.spreadsheetId}/values/${range}`,
@@ -323,29 +315,6 @@ export class SignInSheetColumnService {
     ];
     
     return systemColumns.includes(columnName.toLowerCase().replace(/\s+/g, ''));
-  }
-
-  /**
-   * Insert columns at specified position
-   */
-  private async insertColumns(
-    accessToken: string,
-    sheetId: number,
-    startIndex: number,
-    count: number
-  ): Promise<void> {
-    const request = {
-      insertDimension: {
-        range: {
-          sheetId,
-          dimension: 'COLUMNS',
-          startIndex,
-          endIndex: startIndex + count
-        }
-      }
-    };
-
-    await this.batchUpdate(accessToken, [request]);
   }
 
   /**
@@ -381,7 +350,7 @@ export class SignInSheetColumnService {
     value: string
   ): Promise<void> {
     const columnLetter = this.numberToColumn(column);
-    const range = `'${this.sheetName}'!${columnLetter}${row}`;
+    const range = `${this.sheetName}!${columnLetter}${row}`;
     
     await this.updateRange(accessToken, range, [[value]]);
   }
